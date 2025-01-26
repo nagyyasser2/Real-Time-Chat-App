@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
 
@@ -11,7 +11,7 @@ async function bootstrap() {
 
   const port = configService.get('port');
 
-
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.listen(port ?? 3000);
 
   const url = await app.getUrl();
