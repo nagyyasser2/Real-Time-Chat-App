@@ -7,9 +7,9 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { ChannelsMetadataService } from './channels-metadata.service';
-import { CreateChannelsMetadataDto } from './dto/create-channels-metadata.dto';
-import { UpdateChannelsMetadataDto } from './dto/update-channels-metadata.dto';
+import { ChannelsMetadataService } from '../services/channels-metadata.service';
+import { CreateChannelsMetadataDto } from '../dto/create-channels-metadata.dto';
+import { UpdateChannelsMetadataDto } from '../dto/update-channels-metadata.dto';
 
 @Controller('channels-metadata')
 export class ChannelsMetadataController {

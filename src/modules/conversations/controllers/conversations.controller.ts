@@ -1,7 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ConversationsService } from './conversations.service';
-import { CreateConversationDto } from './dto/create-conversation.dto';
-import { UpdateConversationDto } from './dto/update-conversation.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ConversationsService } from '../services/conversations.service';
+import { CreateConversationDto } from '../dto/create-conversation.dto';
+import { UpdateConversationDto } from '../dto/update-conversation.dto';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -23,7 +31,10 @@ export class ConversationsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateConversationDto: UpdateConversationDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateConversationDto: UpdateConversationDto,
+  ) {
     return this.conversationsService.update(+id, updateConversationDto);
   }
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateGroupsMetadataDto } from './dto/create-groups-metadata.dto';
-import { UpdateGroupsMetadataDto } from './dto/update-groups-metadata.dto';
+import { CreateGroupsMetadataDto } from '../dto/create-groups-metadata.dto';
+import { UpdateGroupsMetadataDto } from '../dto/update-groups-metadata.dto';
 
 @Injectable()
 export class GroupsMetadataService {

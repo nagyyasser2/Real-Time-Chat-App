@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { GroupsMetadataService } from './groups-metadata.service';
-import { GroupsMetadataController } from './groups-metadata.controller';
+import { GroupsMetadataService } from './services/groups-metadata.service';
+import { GroupsMetadataController } from './controllers/groups-metadata.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   GroupsMetadata,

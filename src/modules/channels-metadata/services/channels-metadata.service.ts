@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateChannelsMetadataDto } from './dto/create-channels-metadata.dto';
-import { UpdateChannelsMetadataDto } from './dto/update-channels-metadata.dto';
+import { CreateChannelsMetadataDto } from '../dto/create-channels-metadata.dto';
+import { UpdateChannelsMetadataDto } from '../dto/update-channels-metadata.dto';
 
 @Injectable()
 export class ChannelsMetadataService {

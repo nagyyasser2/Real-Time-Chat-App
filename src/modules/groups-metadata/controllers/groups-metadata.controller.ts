@@ -7,9 +7,9 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { GroupsMetadataService } from './groups-metadata.service';
-import { CreateGroupsMetadataDto } from './dto/create-groups-metadata.dto';
-import { UpdateGroupsMetadataDto } from './dto/update-groups-metadata.dto';
+import { GroupsMetadataService } from '../services/groups-metadata.service';
+import { CreateGroupsMetadataDto } from '../dto/create-groups-metadata.dto';
+import { UpdateGroupsMetadataDto } from '../dto/update-groups-metadata.dto';
 
 @Controller('groups-metadata')
 export class GroupsMetadataController {
