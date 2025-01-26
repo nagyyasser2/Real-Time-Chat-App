@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { CreateChannelsMetadatumDto } from './dto/create-channels-metadatum.dto';
-import { UpdateChannelsMetadatumDto } from './dto/update-channels-metadatum.dto';
+import { CreateChannelsMetadataDto } from './dto/create-channels-metadata.dto';
+import { UpdateChannelsMetadataDto } from './dto/update-channels-metadata.dto';
 
 @Injectable()
 export class ChannelsMetadataService {
-  create(createChannelsMetadatumDto: CreateChannelsMetadatumDto) {
-    return 'This action adds a new channelsMetadatum';
+  create(createChannelsMetadataDto: CreateChannelsMetadataDto) {
+    return 'This action adds a new channelsMetadata';
   }
 
   findAll() {
@@ -13,14 +13,14 @@ export class ChannelsMetadataService {
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} channelsMetadatum`;
+    return `This action returns a #${id} channelsMetadata`;
   }
 
-  update(id: number, updateChannelsMetadatumDto: UpdateChannelsMetadatumDto) {
-    return `This action updates a #${id} channelsMetadatum`;
+  update(id: number, updateChannelsMetadataDto: UpdateChannelsMetadataDto) {
+    return `This action updates a #${id} channelsMetadata`;
   }
 
   remove(id: number) {
-    return `This action removes a #${id} channelsMetadatum`;
+    return `This action removes a #${id} channelsMetadata`;
   }
 }

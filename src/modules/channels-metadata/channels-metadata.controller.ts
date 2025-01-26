@@ -1,15 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ChannelsMetadataService } from './channels-metadata.service';
-import { CreateChannelsMetadatumDto } from './dto/create-channels-metadatum.dto';
-import { UpdateChannelsMetadatumDto } from './dto/update-channels-metadatum.dto';
+import { CreateChannelsMetadataDto } from './dto/create-channels-metadata.dto';
+import { UpdateChannelsMetadataDto } from './dto/update-channels-metadata.dto';
 
 @Controller('channels-metadata')
 export class ChannelsMetadataController {
-  constructor(private readonly channelsMetadataService: ChannelsMetadataService) {}
+  constructor(
+    private readonly channelsMetadataService: ChannelsMetadataService,
+  ) {}
 
   @Post()
-  create(@Body() createChannelsMetadatumDto: CreateChannelsMetadatumDto) {
-    return this.channelsMetadataService.create(createChannelsMetadatumDto);
+  create(@Body() createChannelsMetadataDto: CreateChannelsMetadataDto) {
+    return this.channelsMetadataService.create(createChannelsMetadataDto);
   }
 
   @Get()
@@ -23,8 +33,11 @@ export class ChannelsMetadataController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateChannelsMetadatumDto: UpdateChannelsMetadatumDto) {
-    return this.channelsMetadataService.update(+id, updateChannelsMetadatumDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateChannelsMetadataDto: UpdateChannelsMetadataDto,
+  ) {
+    return this.channelsMetadataService.update(+id, updateChannelsMetadataDto);
   }
 
   @Delete(':id')

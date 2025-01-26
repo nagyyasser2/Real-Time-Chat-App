@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { CreateGroupsMetadatumDto } from './dto/create-groups-metadatum.dto';
-import { UpdateGroupsMetadatumDto } from './dto/update-groups-metadatum.dto';
+import { CreateGroupsMetadataDto } from './dto/create-groups-metadata.dto';
+import { UpdateGroupsMetadataDto } from './dto/update-groups-metadata.dto';
 
 @Injectable()
 export class GroupsMetadataService {
-  create(createGroupsMetadatumDto: CreateGroupsMetadatumDto) {
-    return 'This action adds a new groupsMetadatum';
+  create(createGroupsMetadataDto: CreateGroupsMetadataDto) {
+    return 'This action adds a new groupsMetadata';
   }
 
   findAll() {
@@ -13,14 +13,14 @@ export class GroupsMetadataService {
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} groupsMetadatum`;
+    return `This action returns a #${id} groupsMetadata`;
   }
 
-  update(id: number, updateGroupsMetadatumDto: UpdateGroupsMetadatumDto) {
-    return `This action updates a #${id} groupsMetadatum`;
+  update(id: number, updateGroupsMetadataDto: UpdateGroupsMetadataDto) {
+    return `This action updates a #${id} groupsMetadata`;
   }
 
   remove(id: number) {
-    return `This action removes a #${id} groupsMetadatum`;
+    return `This action removes a #${id} groupsMetadata`;
   }
 }

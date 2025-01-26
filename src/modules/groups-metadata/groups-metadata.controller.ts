@@ -1,15 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { GroupsMetadataService } from './groups-metadata.service';
-import { CreateGroupsMetadatumDto } from './dto/create-groups-metadatum.dto';
-import { UpdateGroupsMetadatumDto } from './dto/update-groups-metadatum.dto';
+import { CreateGroupsMetadataDto } from './dto/create-groups-metadata.dto';
+import { UpdateGroupsMetadataDto } from './dto/update-groups-metadata.dto';
 
 @Controller('groups-metadata')
 export class GroupsMetadataController {
   constructor(private readonly groupsMetadataService: GroupsMetadataService) {}
 
   @Post()
-  create(@Body() createGroupsMetadatumDto: CreateGroupsMetadatumDto) {
-    return this.groupsMetadataService.create(createGroupsMetadatumDto);
+  create(@Body() createGroupsMetadataDto: CreateGroupsMetadataDto) {
+    return this.groupsMetadataService.create(createGroupsMetadataDto);
   }
 
   @Get()
@@ -23,8 +31,11 @@ export class GroupsMetadataController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateGroupsMetadatumDto: UpdateGroupsMetadatumDto) {
-    return this.groupsMetadataService.update(+id, updateGroupsMetadatumDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateGroupsMetadataDto: UpdateGroupsMetadataDto,
+  ) {
+    return this.groupsMetadataService.update(+id, updateGroupsMetadataDto);
   }
 
   @Delete(':id')
