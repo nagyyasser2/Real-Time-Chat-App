@@ -1,40 +1,48 @@
-import { IsNotEmpty, IsString, IsOptional, IsEnum } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsEnum,
+  ValidateNested,
+} from 'class-validator';
+import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
+import { PhotoVisibility } from '../enums/profile-photo.enum';
+import { Type } from 'class-transformer';
 
-export enum LastSeenVisibility {
-    EVERYONE = 'everyone',
-    CONTACTS = 'contacts',
-    NOBODY = 'nobody',
+class PrivacySettingsDto {
+  @IsEnum(LastSeenVisibility)
+  @IsOptional()
+  lastSeenVisibility?: LastSeenVisibility;
+
+  @IsEnum(PhotoVisibility)
+  @IsOptional()
+  profilePhotoVisibility?: PhotoVisibility;
 }
-
-export enum ProfilePhotoVisibility {
-    EVERYONE = 'everyone',
-    CONTACTS = 'contacts',
-    NOBODY = 'nobody',
-}
-
 export class CreateUserDto {
-    @IsNotEmpty()
-    @IsString()
-    phoneNumber: string;
+  @IsNotEmpty()
+  @IsString()
+  phoneNumber: string;
 
-    @IsOptional()
-    @IsString()
-    username?: string;
+  @IsOptional()
+  @IsString()
+  username?: string;
 
-    @IsOptional()
-    @IsString()
-    profilePic?: string;
+  @IsOptional()
+  @IsString()
+  profilePic?: string;
 
-    @IsOptional()
-    @IsString()
-    status?: string;
+  @IsOptional()
+  @IsString()
+  status?: string;
 
-    @IsOptional()
-    lastSeen?: Date;
+  @IsOptional()
+  lastSeen?: Date;
 
-    @IsOptional()
-    privacySettings?: {
-        lastSeenVisibility?: LastSeenVisibility;
-        profilePhotoVisibility?: ProfilePhotoVisibility;
-    };
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PrivacySettingsDto)
+  privacySettings?: {
+    lastSeenVisibility?: LastSeenVisibility;
+    profilePhotoVisibility?: PhotoVisibility;
+  };
 }

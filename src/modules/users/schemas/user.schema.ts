@@ -26,26 +26,20 @@ export class User {
     type: {
       lastSeenVisibility: {
         type: String,
-        enum: [
-          LastSeenVisibility.Contacts,
-          LastSeenVisibility.Everyone,
-          LastSeenVisibility.Nobody,
-        ],
+        enum: LastSeenVisibility,
+        default: LastSeenVisibility.Everyone,
       },
       profilePhotoVisibility: {
         type: String,
-        enum: [
-          PhotoVisibility.Contacts,
-          PhotoVisibility.Everyone,
-          PhotoVisibility.Nobody,
-        ],
+        enum: PhotoVisibility,
+        default: PhotoVisibility.Everyone,
       },
     },
     _id: false,
   })
   privacySettings?: {
-    lastSeenVisibility: string;
-    profilePhotoVisibility: string;
+    lastSeenVisibility?: LastSeenVisibility;
+    profilePhotoVisibility?: PhotoVisibility;
   };
 }
 

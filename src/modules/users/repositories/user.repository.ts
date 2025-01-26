@@ -8,4 +8,80 @@ export class UserRepository {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
+
+  async createUser(user: Partial<User>): Promise<UserDocument> {
+    return this.userModel.create(user);
+  }
+
+  async findUserById(userId: any): Promise<UserDocument | null> {
+    return this.userModel.findById(userId).exec();
+  }
+
+  async findByPhoneNumber(phoneNumber: any): Promise<UserDocument | null> {
+    return this.userModel.findOne({ phoneNumber }).exec();
+  }
+
+  async findByUsername(username: any): Promise<UserDocument | null> {
+    return this.userModel.findOne({ username }).exec();
+  }
+
+  async findAll(): Promise<UserDocument[]> {
+    return this.userModel.find().exec();
+  }
+
+  async updateUser(
+    userId: any,
+    updateData: Partial<User>,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, updateData, { new: true })
+      .exec();
+  }
+
+  async updateProfilePic(
+    userId: any,
+    profilePicUrl: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { profilePic: profilePicUrl }, { new: true })
+      .exec();
+  }
+
+  async updateStatus(
+    userId: string,
+    status: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { status }, { new: true })
+      .exec();
+  }
+
+  async updateLastSeen(userId: any): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { lastSeen: new Date() }, { new: true })
+      .exec();
+  }
+
+  async updatePrivacySettings(
+    userId: any,
+    privacySettings: Partial<User['privacySettings']>,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { $set: { privacySettings } }, { new: true })
+      .exec();
+  }
+
+  async deleteUser(userId: any): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndDelete(userId).exec();
+  }
+
+  async existsByPhoneNumber(phoneNumber: any): Promise<boolean> {
+    const exists = await this.userModel.exists({ phoneNumber });
+    return !!exists;
+  }
+
+  async existsByUsername(username: any): Promise<boolean> {
+    const exists = await this.userModel.exists({ username });
+    return !!exists;
+  }
 }
