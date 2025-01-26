@@ -12,6 +12,8 @@ import { ParticipantsModule } from './modules/participants/participants.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChannelsMetadataModule } from './modules/channels-metadata/channels-metadata.module';
 import { GroupsMetadataModule } from './modules/groups-metadata/groups-metadata.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 
 @Module({
@@ -20,6 +22,9 @@ import { GroupsMetadataModule } from './modules/groups-metadata/groups-metadata.
       load: [configuration],
       // validationSchema,
       isGlobal: true,
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
     }),
     DatabaseModule,
     MessagesModule,
