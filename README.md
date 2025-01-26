@@ -1,6 +1,6 @@
-# 🗨️ Chatters
+# 🗨️ Sahab (سحــاب)
 
-Welcome to the **Chatters** project! This application is designed to deliver seamless and real-time communication. Below is a detailed breakdown of the database schema, entities, and features. The project uses **MongoDB** as its database, ensuring reliability and scalability.
+Welcome to the **Sahab** project! This application is designed to deliver seamless and real-time communication. Below is a detailed breakdown of the database schema, entities, and features. The project uses **MongoDB** as its database, ensuring reliability and scalability.
 
 ---
 
