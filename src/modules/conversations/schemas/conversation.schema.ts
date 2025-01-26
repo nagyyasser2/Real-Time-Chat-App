@@ -1,43 +1,38 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { User } from '../../users/schemas/user.schema';
+import { ConversationType } from '../enums/conv-type.enum';
 export type ConversationDocument = HydratedDocument<Conversation>;
 
-export enum ConversationType {
-    PRIVATE = 'private',
-    GROUP = 'group',
-    CHANNEL = 'channel',
-}
-
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, autoIndex: true })
 export class Conversation {
-    @Prop({
-        required: true,
-        enum: ConversationType,
-        type: String,
-    })
-    type: ConversationType;
+  @Prop({
+    required: true,
+    enum: ConversationType,
+    type: String,
+  })
+  type: ConversationType;
 
-    @Prop()
-    name?: string;
+  @Prop({ type: String, unique: true, required: true })
+  name?: string;
 
-    @Prop()
-    description?: string;
+  @Prop({ type: String, default: null })
+  description?: string;
 
-    @Prop({ type: Types.ObjectId, ref: 'User' })
-    creator?: User;
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  creator?: User;
 
-    @Prop({ default: false })
-    isBroadcast?: boolean;
+  @Prop({ default: false })
+  isBroadcast?: boolean;
 
-    @Prop()
-    avatar?: string;
+  @Prop({ type: String, default: null })
+  avatar?: string;
 
-    @Prop({ type: Types.ObjectId, ref: 'Message' })
-    lastMessage?: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Message' })
+  lastMessage?: Types.ObjectId;
 
-    @Prop({ default: 0 })
-    participantCount?: number;
+  @Prop({ default: 0 })
+  participantCount?: number;
 }
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);

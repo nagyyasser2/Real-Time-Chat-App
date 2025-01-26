@@ -1,30 +1,35 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Types } from 'mongoose';
+import { JoinSettings } from '../enums/join-settings.enum';
 
 export type GroupsMetadataDocument = HydratedDocument<GroupsMetadata>;
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, autoIndex: true })
 export class GroupsMetadata {
   @Prop({
     required: true,
     unique: true,
     type: Types.ObjectId,
-    ref: 'conversations',
+    ref: 'Conversation',
   })
   conversation: Types.ObjectId;
 
-  @Prop({ required: true, enum: ['open', 'approval'] })
+  @Prop({
+    required: true,
+    enum: [JoinSettings.OPEN, JoinSettings.APPROVAL],
+    default: JoinSettings.OPEN,
+  })
   joinSettings: string;
 
-  @Prop({ required: false })
-  announcement?: string; // Pinned group announcement
+  @Prop({ required: false, type: String })
+  announcement?: string;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'users' }] })
-  bannedUsers?: Types.ObjectId[]; // List of banned users
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
+  bannedUsers?: Types.ObjectId[];
 
-  @Prop({ default: false })
-  adminOnlyPosts?: boolean; // Restrict posting to admins
+  @Prop({ default: false, type: Boolean })
+  adminOnlyPosts?: boolean;
 }
 
 export const GroupsMetadataSchema =

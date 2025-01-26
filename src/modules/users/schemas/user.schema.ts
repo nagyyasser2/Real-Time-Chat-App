@@ -1,36 +1,52 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
+import { PhotoVisibility } from '../enums/profile-photo.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, autoIndex: true })
 export class User {
-    @Prop({ required: true, unique: true })
-    phoneNumber: string;
+  @Prop({ type: String, required: true, unique: true })
+  phoneNumber: string;
 
-    @Prop()
-    username?: string;
+  @Prop({ type: String, required: true, unique: true })
+  username: string;
 
-    @Prop()
-    profilePic?: string;
+  @Prop({ type: String })
+  profilePic?: string;
 
-    @Prop()
-    status?: string;
+  @Prop({ type: String, default: null })
+  status?: string;
 
-    @Prop()
-    lastSeen?: Date;
+  @Prop({ type: String, default: null })
+  lastSeen?: Date;
 
-    @Prop({
-        type: {
-            lastSeenVisibility: String, // 'everyone', 'contacts', 'nobody'
-            profilePhotoVisibility: String,
-        },
-        _id: false
-    })
-    privacySettings?: {
-        lastSeenVisibility: string;
-        profilePhotoVisibility: string;
-    };
+  @Prop({
+    type: {
+      lastSeenVisibility: {
+        type: String,
+        enum: [
+          LastSeenVisibility.Contacts,
+          LastSeenVisibility.Everyone,
+          LastSeenVisibility.Nobody,
+        ],
+      },
+      profilePhotoVisibility: {
+        type: String,
+        enum: [
+          PhotoVisibility.Contacts,
+          PhotoVisibility.Everyone,
+          PhotoVisibility.Nobody,
+        ],
+      },
+    },
+    _id: false,
+  })
+  privacySettings?: {
+    lastSeenVisibility: string;
+    profilePhotoVisibility: string;
+  };
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
