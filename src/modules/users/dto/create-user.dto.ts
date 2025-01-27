@@ -18,14 +18,23 @@ class PrivacySettingsDto {
   @IsOptional()
   profilePhotoVisibility?: PhotoVisibility;
 }
+
 export class CreateUserDto {
   @IsNotEmpty()
   @IsString()
   phoneNumber: string;
 
+  @IsNotEmpty()
+  @IsString()
+  username: string;
+
   @IsOptional()
   @IsString()
-  username?: string;
+  refreshToken?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password: string;
 
   @IsOptional()
   @IsString()

@@ -14,4 +14,4 @@ import { IConfig } from '../../config/interfaces/config.interface';
     }),
   ],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }

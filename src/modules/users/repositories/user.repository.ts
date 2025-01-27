@@ -7,7 +7,7 @@ import { User, UserDocument } from '../schemas/user.schema';
 export class UserRepository {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) {}
+  ) { }
 
   async createUser(user: Partial<User>): Promise<UserDocument> {
     return this.userModel.create(user);
@@ -17,16 +17,16 @@ export class UserRepository {
     return this.userModel.findById(userId).exec();
   }
 
-  async findByPhoneNumber(phoneNumber: any): Promise<UserDocument | null> {
-    return this.userModel.findOne({ phoneNumber }).exec();
+  async findByPhoneNumber(phoneNumber: string): Promise<UserDocument | null> {
+    return await this.userModel.findOne({ phoneNumber }).exec();
   }
 
-  async findByUsername(username: any): Promise<UserDocument | null> {
-    return this.userModel.findOne({ username }).exec();
+  async findByUsername(username: string): Promise<UserDocument | null> {
+    return await this.userModel.findOne({ username }).exec();
   }
 
   async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().exec();
+    return await this.userModel.find().exec();
   }
 
   async updateUser(

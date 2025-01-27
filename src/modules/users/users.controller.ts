@@ -11,16 +11,16 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { UsersService } from '../services/users.service';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
-import { User } from '../schemas/user.schema';
-import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
-import { PhotoVisibility } from '../enums/profile-photo.enum';
+import { UsersService } from './services/users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './schemas/user.schema';
+import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
+import { PhotoVisibility } from './enums/profile-photo.enum';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto): Promise<User> {

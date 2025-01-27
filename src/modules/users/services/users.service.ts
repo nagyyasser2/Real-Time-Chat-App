@@ -13,7 +13,7 @@ import { PhotoVisibility } from '../enums/profile-photo.enum';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly userRepository: UserRepository) { }
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {
     const { phoneNumber, username, privacySettings } = createUserDto;
@@ -92,11 +92,11 @@ export class UsersService {
       ...updateUserDto,
       privacySettings: updateUserDto.privacySettings
         ? {
-            lastSeenVisibility:
-              updateUserDto.privacySettings.lastSeenVisibility,
-            profilePhotoVisibility:
-              updateUserDto.privacySettings.profilePhotoVisibility,
-          }
+          lastSeenVisibility:
+            updateUserDto.privacySettings.lastSeenVisibility,
+          profilePhotoVisibility:
+            updateUserDto.privacySettings.profilePhotoVisibility,
+        }
         : undefined,
     };
 
@@ -177,10 +177,10 @@ export class UsersService {
   }
 
   async findByPhoneNumber(phoneNumber: string): Promise<User | null> {
-    return this.userRepository.findByPhoneNumber(phoneNumber);
+    return await this.userRepository.findByPhoneNumber(phoneNumber);
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    return this.userRepository.findByUsername(username);
+    return await this.userRepository.findByUsername(username);
   }
 }
