@@ -9,40 +9,14 @@ export type MessageDocument = HydratedDocument<Message>;
 @Schema({ timestamps: true, autoIndex: true })
 export class Message {
   @Prop({ required: true, type: Types.ObjectId, ref: 'Conversation' })
-  conversation: ObjectId;
+  conversation: Types.ObjectId;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
-  sender: ObjectId;
-
-  //   @Prop({
-  //     required: true,
-  //     type: Object,
-  //     validate: {
-  //       validator: (value: any) => {
-  //         return (
-  //           typeof value.text === 'string' ||
-  //           (Array.isArray(value.media) &&
-  //             value.media.every(
-  //               (item) =>
-  //                 typeof item.url === 'string' && typeof item.type === 'string',
-  //             ))
-  //         );
-  //       },
-  //       message: 'Content should be either text or media',
-  //     },
-  //   })
-  //   content: {
-  //     text?: string;
-  //     media?: Array<{
-  //       url: string;
-  //       type: string;
-  //       caption?: string;
-  //     }>;
-  //   };
+  sender: Types.ObjectId;
 
   @Prop({
     required: true,
-    type: Object,
+    type: Types.ObjectId,
   })
   content: {
     text?: string;
@@ -67,7 +41,7 @@ export class Message {
   status: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Message' })
-  parentMessage?: ObjectId;
+  parentMessage?: Types.ObjectId;
 
   @Prop({
     type: [
@@ -77,7 +51,7 @@ export class Message {
       },
     ],
   })
-  reactions?: Array<{ user: ObjectId; emoji: string }>;
+  reactions?: Array<{ user: Types.ObjectId; emoji: string }>;
 
   @Prop({
     type: {
@@ -87,7 +61,7 @@ export class Message {
   })
   metadata?: {
     forwarded?: boolean;
-    forwardedFrom?: ObjectId;
+    forwardedFrom?: Types.ObjectId;
   };
 
   @Prop({ default: Date.now })

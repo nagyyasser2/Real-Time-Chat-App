@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ChannelsMetadataService } from './services/channels-metadata.service';
-import { ChannelsMetadataController } from './controllers/channels-metadata.controller';
+import { ChannelsMetadataService } from './channels-metadata.service';
+import { ChannelsMetadataController } from './channels-metadata.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   ChannelsMetadata,
   ChannelsMetadataSchema,
 } from './schemas/channels-metadata.schema';
+import { ChannelsMetadataRepository } from './channels-metadata.repository';
 
 @Module({
   imports: [
@@ -14,6 +15,6 @@ import {
     ]),
   ],
   controllers: [ChannelsMetadataController],
-  providers: [ChannelsMetadataService],
+  providers: [ChannelsMetadataService, ChannelsMetadataRepository],
 })
-export class ChannelsMetadataModule {}
+export class ChannelsMetadataModule { }

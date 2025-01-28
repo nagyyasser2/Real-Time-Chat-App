@@ -1,21 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
 import {
   Participant,
   ParticipantDocument,
-} from '../schemas/participant.schema';
+} from './schemas/participant.schema';
 
 @Injectable()
 export class ParticipantsRepository {
   constructor(
     @InjectModel(Participant.name)
     private readonly participantModel: Model<ParticipantDocument>,
-  ) {}
+  ) { }
+  // Add this method
+  async find(filter: FilterQuery<Participant>): Promise<ParticipantDocument[]> {
+    return this.participantModel.find(filter).exec();
+  }
+
+  async findById(id: Types.ObjectId | string): Promise<ParticipantDocument | null> {
+    return this.participantModel.findById(id).exec();
+  }
 
   async findByUserAndConversation(
-    user: string,
-    conversation: string,
+    user: Types.ObjectId,
+    conversation: Types.ObjectId,
   ): Promise<ParticipantDocument | null> {
     return this.participantModel.findOne({ user, conversation }).exec();
   }
@@ -28,7 +36,7 @@ export class ParticipantsRepository {
   }
 
   async updateById(
-    id: string,
+    id: Types.ObjectId,
     updateData: Partial<Participant>,
   ): Promise<ParticipantDocument | null> {
     return this.participantModel
@@ -36,7 +44,7 @@ export class ParticipantsRepository {
       .exec();
   }
 
-  async deleteById(id: string): Promise<ParticipantDocument | null> {
+  async deleteById(id: Types.ObjectId): Promise<ParticipantDocument | null> {
     return this.participantModel.findByIdAndDelete(id).exec();
   }
 }

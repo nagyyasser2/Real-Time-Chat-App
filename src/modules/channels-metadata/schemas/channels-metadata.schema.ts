@@ -12,7 +12,7 @@ export class ChannelsMetadata {
     type: Types.ObjectId,
     ref: 'Conversation',
   })
-  conversation: ObjectId;
+  conversation: Types.ObjectId;
 
   @Prop({ default: false, type: Boolean })
   verified?: boolean;
@@ -21,7 +21,7 @@ export class ChannelsMetadata {
   subscriberCount?: number;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Message' }] })
-  broadcastHistory?: ObjectId[];
+  broadcastHistory?: Types.ObjectId[];
 
   @Prop({
     type: {

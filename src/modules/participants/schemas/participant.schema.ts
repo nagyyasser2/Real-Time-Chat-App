@@ -8,10 +8,10 @@ export type ParticipantDocument = HydratedDocument<Participant>;
 @Schema({ timestamps: true, autoIndex: true })
 export class Participant {
   @Prop({ required: true, type: Types.ObjectId, ref: 'Conversation' })
-  conversation: ObjectId;
+  conversation: Types.ObjectId;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
-  user: ObjectId;
+  user: Types.ObjectId;
 
   @Prop({
     type: String,
@@ -31,7 +31,7 @@ export class Participant {
   mutedUntil?: Date;
 
   @Prop({ type: Types.ObjectId, ref: 'Message' })
-  lastReadMessage?: ObjectId;
+  lastReadMessage?: Types.ObjectId;
 
   @Prop({
     type: {
