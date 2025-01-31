@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/services/users.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
@@ -18,7 +15,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<IConfig>,
-  ) { }
+  ) {}
 
   async signUp(createUserDto: CreateUserDto): Promise<Tokens> {
     const hashedPassword = await this.hashData(createUserDto.password);
@@ -35,7 +32,10 @@ export class AuthService {
   }
 
   async signIn(signInDto: SignInDto): Promise<Tokens> {
-    const user = await this.validateCredentials(signInDto.identifier, signInDto.password);
+    const user = await this.validateCredentials(
+      signInDto.identifier,
+      signInDto.password,
+    );
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const tokens = await this.generateTokens(user);
@@ -79,7 +79,7 @@ export class AuthService {
   }
 
   async logout(userId: string): Promise<void> {
-    await this.usersService.update(userId, { refreshToken: "" });
+    await this.usersService.update(userId, { refreshToken: '' });
   }
 
   private async generateTokens(user: User): Promise<Tokens> {
@@ -129,7 +129,7 @@ export class AuthService {
   private async findUserByIdentifier(identifier: string): Promise<User> {
     const user = identifier.includes('@')
       ? await this.usersService.findByUsername(identifier)
-      : await this.usersService.findByPhoneNumber(identifier)
+      : await this.usersService.findByPhoneNumber(identifier);
 
     if (!user) throw new UnauthorizedException('User not found');
     return user;
