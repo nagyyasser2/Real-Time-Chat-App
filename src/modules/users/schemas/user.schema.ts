@@ -49,6 +49,22 @@ export class User {
     lastSeenVisibility?: LastSeenVisibility;
     profilePhotoVisibility?: PhotoVisibility;
   };
+
+  @Prop({
+    type: [
+      {
+        contactUser: { type: Types.ObjectId, ref: 'User', required: true },
+        assignedConversation: { type: Types.ObjectId, ref: 'Conversation', required: true },
+        blocked: { type: Boolean, default: false },
+      },
+    ],
+    default: [],
+  })
+  contacts: Array<{
+    contactUser: Types.ObjectId;
+    assignedConversation: Types.ObjectId;
+    blocked: boolean;
+  }>;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

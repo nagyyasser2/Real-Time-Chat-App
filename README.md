@@ -149,3 +149,37 @@ Provides metadata for channels, including analytics and broadcast history.
 - **Reactions & Replies**: Engage with message reactions and threaded replies.
 
 ---
+
+
+client will guide the server whether the incomming message was private or group message. 
+
+```javascript
+{
+  type: 'private',
+  sender: 'user_id',
+  receiver: 'user_id',
+  content: 'Hello, how are you?'
+}
+```
+
+```javascript
+{
+  type: 'group',
+  sender: 'user_id',
+  receiver: 'group_id',
+  content: 'Hello, everyone!'
+}
+```
+
+```javascript
+{
+  type: 'channel',
+  sender: 'user_id',
+  receiver: 'channel_id',
+  content: 'New product launch!'
+}
+```
+
+if it was private message, the server will check if this was the first time the two users are chatting, if so, it will create a new conversation document in the conversations collection and add the two users as participants. 
+
+
