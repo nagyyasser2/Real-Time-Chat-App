@@ -1,10 +1,9 @@
 import { Types } from "mongoose";
 import { MessageType } from "../../chat/enums/message-type.enum";
 
-// Typical CreateMessageDto
 export class CreateMessageDto {
-    conversation: Types.ObjectId;
-    sender: Types.ObjectId;
+    conversationId: string; // Keep as string for validation
+    senderId: string;
     content: {
         text?: string;
         media?: Array<{
@@ -14,10 +13,9 @@ export class CreateMessageDto {
         }>;
     };
     type: MessageType;
-    parentMessage?: Types.ObjectId;
+    parentMessageId?: string;
     metadata?: {
         forwarded?: boolean;
-        forwardedFrom?: Types.ObjectId;
+        forwardedFrom?: string;
     };
 }
-

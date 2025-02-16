@@ -183,3 +183,26 @@ client will guide the server whether the incomming message was private or group 
 if it was private message, the server will check if this was the first time the two users are chatting, if so, it will create a new conversation document in the conversations collection and add the two users as participants. 
 
 
+
+
+
+// user trip
+
+1- user start search for a others by typing the username or phone number or region, the server will return the users that match the search query. 
+2- user select the user he wants to chat with,  the client will send a request to the server to check if there is a conversation between the two users, if so, the server will return the conversation id, if not, the server will create a new conversation document in the conversations collection and add the two users as participants.
+3- the client will use the conversation id to send messages between the two users.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
