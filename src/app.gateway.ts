@@ -4,11 +4,11 @@ import {
     WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UseGuards } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { WsAuthGuard } from './modules/chat/guards/ws-auth.guard';
 import { RedisStoreService } from './modules/chat/services/redis-store.service';
 
-@UseGuards(WsAuthGuard)
+// @UseGuards(WsAuthGuard)
 export abstract class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     protected server: Server;
@@ -17,11 +17,13 @@ export abstract class AppGateway implements OnGatewayConnection, OnGatewayDiscon
 
     async handleConnection(client: Socket): Promise<void> {
         const userId = this.getUserIdFromSocket(client);
-        if (userId) {
-            client.join(userId);
-            this.redisStoreService.addUser(userId, client.id);
-            await this.handleUserConnect(userId, client);
+        
+        if (!userId) {
+            throw new UnauthorizedException();
         }
+
+        this.redisStoreService.addUser(userId, client.id);
+        await this.handleUserConnect(userId, client);
     }
 
     async handleDisconnect(client: Socket): Promise<void> {

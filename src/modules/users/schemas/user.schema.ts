@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from '../enums/profile-photo.enum';
+import { Country } from '../enums/countries.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -14,6 +15,9 @@ export class User {
 
   @Prop({ type: String, required: true, unique: true })
   username: string;
+
+  @Prop({ type: String, required: true, enum: Object.values(Country) }) // Use Enum
+  country: Country;
 
   @Prop({ type: String, required: true })
   password: string;
@@ -53,16 +57,18 @@ export class User {
   @Prop({
     type: [
       {
-        contactUser: { type: Types.ObjectId, ref: 'User', required: true },
-        assignedConversation: { type: Types.ObjectId, ref: 'Conversation', required: true },
+        type: { type: String, required: true, default: 'personal' },
+        user: { type: Types.ObjectId, ref: 'User' },
+        room: { type: Types.ObjectId, ref: 'Conversation' },
         blocked: { type: Boolean, default: false },
       },
     ],
     default: [],
   })
   contacts: Array<{
-    contactUser: Types.ObjectId;
-    assignedConversation: Types.ObjectId;
+    type: string;
+    user?: Types.ObjectId;
+    room?: Types.ObjectId;
     blocked: boolean;
   }>;
 }

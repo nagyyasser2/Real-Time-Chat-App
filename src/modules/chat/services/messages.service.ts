@@ -17,11 +17,7 @@ export class MessagesService {
   constructor(private readonly messageRepository: MessageRepository) { }
 
   async create(createMessageDto: CreateMessageDto): Promise<MessageDocument> {
-    const message = await this.messageRepository.create({
-      ...createMessageDto,
-      status: MessageStatus.SENT,
-      timestamp: new Date(),
-    });
+    const message = await this.messageRepository.create(createMessageDto);
     return message;
   }
 

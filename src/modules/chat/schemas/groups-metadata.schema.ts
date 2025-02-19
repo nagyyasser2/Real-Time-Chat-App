@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
-import { Types } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { JoinSettings } from '../enums/join-settings.enum';
+import { User } from '../../users/schemas/user.schema';
 
 export type GroupsMetadataDocument = HydratedDocument<GroupsMetadata>;
 
@@ -14,6 +14,30 @@ export class GroupsMetadata {
     ref: 'Conversation',
   })
   conversation: Types.ObjectId;
+
+  @Prop({
+    required: true,
+    type: String,
+  })
+  type: string;
+
+  @Prop({ type: String, unique: true, required: true })
+  name: string;
+
+  @Prop({ type: String, default: null })
+  description?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  creator: Types.ObjectId;
+
+  @Prop({ type: String, default: null })
+  avatar?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'Message' })
+  lastMessage?: Types.ObjectId;
+
+  @Prop({ default: 0 })
+  participantCount?: number;
 
   @Prop({
     required: true,

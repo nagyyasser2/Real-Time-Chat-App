@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, FilterQuery, ProjectionType, QueryOptions, Types } from 'mongoose';
+import { Model, FilterQuery, ProjectionType, QueryOptions, Types, UpdateQuery } from 'mongoose';
 import { Conversation, ConversationDocument } from '../schemas/conversation.schema';
 
 @Injectable()
@@ -16,8 +16,11 @@ export class ConversationRepository {
   }
 
   // Read
-  async findById(id: Types.ObjectId): Promise<ConversationDocument | null> {
-    return this.conversationModel.findById(id).exec();
+  async findById(
+    id: Types.ObjectId,
+    projection?: ProjectionType<Conversation>,
+  ): Promise<ConversationDocument | null> {
+    return this.conversationModel.findById(id, projection).exec();
   }
 
   async findOne(
@@ -28,12 +31,29 @@ export class ConversationRepository {
     return this.conversationModel.findOne(filter, projection, options).exec();
   }
 
-  async find(
-    filter: FilterQuery<Conversation>,
-    projection?: ProjectionType<Conversation>,
-    options?: QueryOptions,
+  async findActiveConversation(
+    participant1Id: Types.ObjectId,
+    participant2Id: Types.ObjectId,
+  ): Promise<ConversationDocument | null> {
+    const [sortedParticipant1, sortedParticipant2] = [participant1Id, participant2Id].sort();
+    return this.conversationModel.findOne({
+      participant1: sortedParticipant1,
+      participant2: sortedParticipant2,
+      isActive: true,
+    }).exec();
+  }
+
+  async findUserConversations(
+    userId: Types.ObjectId,
+    isArchived: boolean = false,
   ): Promise<ConversationDocument[]> {
-    return this.conversationModel.find(filter, projection, options).exec();
+    return this.conversationModel.find({
+      $or: [{ participant1: userId }, { participant2: userId }],
+      isActive: true,
+      isArchived,
+    })
+      .sort({ lastActivityAt: -1 })
+      .exec();
   }
 
   // Update
@@ -46,37 +66,88 @@ export class ConversationRepository {
       .exec();
   }
 
-  // Delete
-  async deleteById(id: Types.ObjectId): Promise<ConversationDocument | null> {
-    return this.conversationModel.findByIdAndDelete(id).exec();
-  }
-
-  // Specific conversation operations
-  async findByName(name: string): Promise<ConversationDocument | null> {
-    return this.conversationModel.findOne({ name }).exec();
-  }
-
-  async incrementParticipantCount(
-    id: Types.ObjectId,
-    incrementBy = 1,
+  async updateOne(
+    filter: FilterQuery<Conversation>,
+    update: UpdateQuery<Conversation>,
+    options: QueryOptions = { new: true }
   ): Promise<ConversationDocument | null> {
     return this.conversationModel
-      .findByIdAndUpdate(
-        id,
-        { $inc: { participantCount: incrementBy } },
-        { new: true },
-      )
+      .findOneAndUpdate(filter, update, options)
       .exec();
   }
 
-  async setLastMessage(
+  async updateLastMessage(
     conversationId: Types.ObjectId,
     messageId: Types.ObjectId,
   ): Promise<ConversationDocument | null> {
     return this.conversationModel
       .findByIdAndUpdate(
         conversationId,
-        { lastMessage: messageId },
+        {
+          lastMessage: messageId,
+          lastActivityAt: new Date(),
+          $inc: { messageCount: 1 },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async markAsRead(
+    conversationId: Types.ObjectId,
+    userId: Types.ObjectId,
+  ): Promise<ConversationDocument | null> {
+    return this.conversationModel
+      .findByIdAndUpdate(
+        conversationId,
+        {
+          $set: { [`lastReadAt.${userId}`]: new Date() },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async blockConversation(
+    conversationId: Types.ObjectId,
+    userId: Types.ObjectId,
+  ): Promise<ConversationDocument | null> {
+    return this.conversationModel
+      .findByIdAndUpdate(
+        conversationId,
+        {
+          $addToSet: { blockedBy: userId },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async unblockConversation(
+    conversationId: Types.ObjectId,
+    userId: Types.ObjectId,
+  ): Promise<ConversationDocument | null> {
+    return this.conversationModel
+      .findByIdAndUpdate(
+        conversationId,
+        {
+          $pull: { blockedBy: userId },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async archiveConversation(
+    conversationId: Types.ObjectId,
+  ): Promise<ConversationDocument | null> {
+    return this.conversationModel
+      .findByIdAndUpdate(
+        conversationId,
+        {
+          isArchived: true,
+          lastActivityAt: new Date(),
+        },
         { new: true },
       )
       .exec();
@@ -94,7 +165,7 @@ export class ConversationRepository {
         .find(filter)
         .skip(skip)
         .limit(limit)
-        .sort(sort)
+        .sort(sort || { lastActivityAt: -1 })
         .exec(),
       this.conversationModel.countDocuments(filter).exec(),
     ]);
@@ -103,8 +174,25 @@ export class ConversationRepository {
   }
 
   // Utility methods
-  async exists(filter: FilterQuery<Conversation>): Promise<boolean> {
-    const count = await this.conversationModel.countDocuments(filter).exec();
+  async isParticipant(
+    conversationId: Types.ObjectId,
+    userId: Types.ObjectId,
+  ): Promise<boolean> {
+    const count = await this.conversationModel.countDocuments({
+      _id: conversationId,
+      $or: [{ participant1: userId }, { participant2: userId }],
+    }).exec();
+    return count > 0;
+  }
+
+  async isBlocked(
+    conversationId: Types.ObjectId,
+    userId: Types.ObjectId,
+  ): Promise<boolean> {
+    const count = await this.conversationModel.countDocuments({
+      _id: conversationId,
+      blockedBy: userId,
+    }).exec();
     return count > 0;
   }
 }

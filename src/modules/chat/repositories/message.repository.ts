@@ -5,7 +5,8 @@ import { Model, Types } from 'mongoose';
 
 import { MessageStatus } from '../enums/message-status.enum';
 import { Message, MessageDocument } from '../schemas/message.schema';
-
+import { CreateMessageDto } from '../dtos/create-message.dto';
+ 
 @Injectable()
 export class MessageRepository {
   constructor(
@@ -13,7 +14,7 @@ export class MessageRepository {
     private readonly messageModel: Model<MessageDocument>,
   ) { }
 
-  async create(messageData: Partial<Message>): Promise<MessageDocument> {
+  async create(messageData: CreateMessageDto): Promise<MessageDocument> {
     return this.messageModel.create(messageData);
   }
 

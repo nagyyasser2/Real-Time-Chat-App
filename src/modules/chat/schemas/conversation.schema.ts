@@ -1,38 +1,41 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
-import { ConversationType } from '../enums/conv-type.enum';
+
 export type ConversationDocument = HydratedDocument<Conversation>;
 
 @Schema({ timestamps: true, autoIndex: true })
 export class Conversation {
-  @Prop({
-    required: true,
-    enum: ConversationType,
-    type: String,
-  })
-  type: ConversationType;
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  participant1: Types.ObjectId;
 
-  @Prop({ type: String, unique: true, required: true })
-  name?: string;
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  participant2: Types.ObjectId;
 
-  @Prop({ type: String, default: null })
-  description?: string;
+  @Prop({ type: Boolean, default: true })
+  isActive: boolean;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  creator?: User;
-
-  @Prop({ default: false })
-  isBroadcast?: boolean;
-
-  @Prop({ type: String, default: null })
-  avatar?: string;
+  @Prop({ type: Date })
+  lastActivityAt: Date;
 
   @Prop({ type: Types.ObjectId, ref: 'Message' })
   lastMessage?: Types.ObjectId;
 
-  @Prop({ default: 0 })
-  participantCount?: number;
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
+  blockedBy: Types.ObjectId[];
+
+  @Prop({ type: Map, of: Date })
+  lastReadAt: Map<string, Date>;
+
+  @Prop({ type: Boolean, default: false })
+  isArchived: boolean;
+
+  @Prop({ type: Number, default: 0 })
+  messageCount: number;
 }
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);
+
+// Indexes for common queries
+ConversationSchema.index({ participant1: 1, participant2: 1 }, { unique: true });
+ConversationSchema.index({ lastActivityAt: -1 });
+ConversationSchema.index({ isActive: 1 });

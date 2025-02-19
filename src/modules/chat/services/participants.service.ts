@@ -45,9 +45,9 @@ export class ParticipantsService {
     const participant = await this.participantsRepository.create(createDto);
 
     // Update conversation participant count
-    await this.conversationsRepository.incrementParticipantCount(
-      createDto.conversation,
-    );
+    // await this.conversationsRepository.incrementParticipantCount(
+    //   createDto.conversation,
+    // );
 
     return participant;
   }
@@ -87,12 +87,12 @@ export class ParticipantsService {
     if (!deleted) {
       throw new NotFoundException(`Participant with ID ${id} not found`);
     }
-
+ 
     // Update conversation participant count
-    await this.conversationsRepository.incrementParticipantCount(
-      participant.conversation,
-      -1,
-    );
+    // await this.conversationsRepository.incrementParticipantCount(
+    //   participant.conversation,
+    //   -1,
+    // );
 
     return deleted;
   }

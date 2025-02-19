@@ -1,71 +1,79 @@
-import {
-    IsEnum,
-    IsString,
-    IsOptional,
-    IsBoolean,
-    IsNotEmpty,
-    MaxLength,
-    ValidateIf,
-} from 'class-validator';
-import { ConversationType } from '../enums/conv-type.enum';
+import { IsBoolean, IsOptional, IsNotEmpty, IsMongoId, IsArray, IsDate } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateConversationDto {
-    @ApiProperty({
-        enum: ConversationType,
-        description: 'Type of conversation',
-        example: ConversationType.GROUP,
-    })
-    @IsEnum(ConversationType)
-    @IsNotEmpty()
-    type: ConversationType;
+  @ApiProperty({
+    description: 'First participant of the conversation',
+    example: '60f7c7e3d6e0b441d8b5d5a9',
+  })
+  @IsMongoId()
+  @IsNotEmpty()
+  participant1: string;
 
-    @ApiProperty({
-        description: 'Unique name for the conversation',
-        example: 'project-team-chat',
-        maxLength: 50,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @MaxLength(50)
-    @ValidateIf(o => o.type !== ConversationType.PRIVATE)
-    name: string;
+  @ApiProperty({
+    description: 'Second participant of the conversation',
+    example: '60f7c7e3d6e0b441d8b5d5b0',
+  })
+  @IsMongoId()
+  @IsNotEmpty()
+  participant2: string;
 
-    @ApiProperty({
-        description: 'Conversation description',
-        required: false,
-        example: 'Team communication channel',
-        maxLength: 200,
-    })
-    @IsString()
-    @MaxLength(200)
-    @IsOptional()
-    description?: string;
+  @ApiProperty({
+    description: 'Indicates whether the conversation is active',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean = true;
 
-    @ApiProperty({
-        description: 'URL to conversation avatar image',
-        required: false,
-        example: 'https://example.com/avatar.jpg',
-    })
-    @IsString()
-    @IsOptional()
-    avatar?: string;
+  @ApiProperty({
+    description: 'Last activity timestamp',
+    required: false,
+    example: '2023-08-15T12:34:56.789Z',
+  })
+  @IsDate()
+  @IsOptional()
+  lastActivityAt?: Date;
 
-    @ApiProperty({
-        description: 'Indicates if this is a broadcast channel',
-        required: false,
-        default: false,
-    })
-    @IsBoolean()
-    @IsOptional()
-    isBroadcast?: boolean = false;
+  @ApiProperty({
+    description: 'ID of the last message in the conversation',
+    required: false,
+    example: '60f7c7e3d6e0b441d8b5d5c2',
+  })
+  @IsMongoId()
+  @IsOptional()
+  lastMessage?: string;
 
-    @ApiProperty({
-        description: 'Initial participants (must include creator)',
-        required: false,
-        example: ['user-id-1', 'user-id-2'],
-    })
-    @IsString({ each: true })
-    @IsOptional()
-    participants?: string[];
+  @ApiProperty({
+    description: 'Users who have blocked this conversation',
+    required: false,
+    example: ['60f7c7e3d6e0b441d8b5d5d3'],
+  })
+  @IsArray()
+  @IsMongoId({ each: true })
+  @IsOptional()
+  blockedBy?: string[];
+
+  @ApiProperty({
+    description: 'Timestamp map of last read messages per user',
+    required: false,
+    example: { '60f7c7e3d6e0b441d8b5d5a9': '2023-08-15T12:34:56.789Z' },
+  })
+  @IsOptional()
+  lastReadAt?: Record<string, Date>;
+
+  @ApiProperty({
+    description: 'Indicates if the conversation is archived',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isArchived?: boolean = false;
+
+  @ApiProperty({
+    description: 'Total number of messages in the conversation',
+    example: 50,
+  })
+  @IsOptional()
+  messageCount?: number = 0;
 }

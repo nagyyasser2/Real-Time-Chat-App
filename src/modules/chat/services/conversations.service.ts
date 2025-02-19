@@ -2,14 +2,11 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { ConversationDocument } from '../schemas/conversation.schema';
-import { ConversationType } from '../enums/conv-type.enum';
 import { FilterQuery, Types } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
-import { CreateConversationDto } from '../dtos/create-conversation.dto';
-import { UpdateConversationDto } from '../dtos/update-conversation.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -17,49 +14,79 @@ export class ConversationsService {
     private readonly conversationRepository: ConversationRepository,
   ) { }
 
+
+
   async create(
-    createConversationDto: CreateConversationDto,
-    creatorId: string,
+    participant1Id: string, // Accept strings as input
+    participant2Id: string
   ): Promise<ConversationDocument> {
     try {
-      // Check for unique name if provided
-      if (createConversationDto.name) {
-        const existing = await this.conversationRepository.findByName(
-          createConversationDto.name,
-        );
-        if (existing) {
-          throw new ConflictException(
-            'Conversation with this name already exists',
-          );
-        }
+      if (participant1Id === participant2Id) {
+        throw new BadRequestException('Cannot create conversation with yourself');
       }
-
-      const conversation = await this.conversationRepository.create({
-        ...createConversationDto,
-        creator: { _id: creatorId } as User,
-        participantCount: createConversationDto.type === ConversationType.GROUP ? 1 : 0,
+  
+      // Convert string to ObjectId
+      const objectId1 = new Types.ObjectId(participant1Id);
+      const objectId2 = new Types.ObjectId(participant2Id);
+  
+      // Sort participant IDs to ensure consistent uniqueness check
+      const [sortedParticipant1, sortedParticipant2] = [objectId1, objectId2].sort();
+  
+      const existingConversation = await this.conversationRepository.findOne({
+        participant1: sortedParticipant1,
+        participant2: sortedParticipant2,
       });
-
+  
+      if (existingConversation) {
+        throw new ConflictException('Conversation already exists between these users');
+      }
+  
+      const conversation = await this.conversationRepository.create({
+        participant1: sortedParticipant1,
+        participant2: sortedParticipant2,
+        lastActivityAt: new Date(),
+        isActive: true,
+        messageCount: 0,
+        blockedBy: [],
+        lastReadAt: new Map<string, Date>([
+          [participant1Id, new Date()],
+          [participant2Id, new Date()],
+        ]),
+      });
+  
       return conversation;
     } catch (error) {
-      if (error.code === 11000) { // MongoDB duplicate key error
-        throw new ConflictException('Conversation name must be unique');
+      if (error.code === 11000) {
+        throw new ConflictException('Conversation already exists between these users');
       }
       throw error;
     }
   }
+  
 
-  async findAll(
-    filter: FilterQuery<ConversationDocument> = {},
+  async findUserConversations(
+    userId: string,
     skip = 0,
     limit = 10,
-    sort: Record<string, 1 | -1> = { createdAt: -1 },
+    includeArchived = false
   ): Promise<{ data: ConversationDocument[]; total: number }> {
+    const filter: FilterQuery<ConversationDocument> = {
+      $or: [
+        { participant1: userId },
+        { participant2: userId }
+      ],
+      isActive: true
+    };
+
+    if (!includeArchived) {
+      filter.isArchived = false;
+    }
+
     return this.conversationRepository.findAllPaginated(
       filter,
       skip,
       limit,
-      sort,
+      { lastActivityAt: -1 }
     );
   }
 
@@ -71,79 +98,162 @@ export class ConversationsService {
     return conversation;
   }
 
-  async update(
+  async archive(
     id: Types.ObjectId,
-    updateConversationDto: UpdateConversationDto,
+    userId: string
   ): Promise<ConversationDocument> {
-    if (updateConversationDto.name) {
-      const existing = await this.conversationRepository.findByName(
-        updateConversationDto.name,
-      );
-      if (existing && existing._id !== id) {
-        throw new ConflictException(
-          'Another conversation with this name already exists',
-        );
-      }
+    const conversation = await this.findOne(id);
+
+    if (!this.isParticipant(conversation, userId)) {
+      throw new BadRequestException('User is not a participant in this conversation');
     }
 
-    const updated = await this.conversationRepository.updateById(
-      id,
-      updateConversationDto,
+    const updatedConversation = await this.conversationRepository.updateById(id, { isArchived: true });
+    if (!updatedConversation) {
+      throw new NotFoundException(`Conversation with ID ${id} not found`);
+    }
+    return updatedConversation;
+  }
+
+  async block(
+    id: Types.ObjectId,
+    userId: string
+  ): Promise<ConversationDocument> {
+    const conversation = await this.findOne(id);
+
+    if (!this.isParticipant(conversation, userId)) {
+      throw new BadRequestException('User is not a participant in this conversation');
+    }
+
+    if (conversation.blockedBy.includes(new Types.ObjectId(userId))) {
+      throw new BadRequestException('Conversation is already blocked by this user');
+    }
+
+    const updatedConversation = await this.conversationRepository.updateOne(
+      { _id: id },
+      { $push: { blockedBy: userId } }
     );
 
-    if (!updated) {
+    if (!updatedConversation) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }
 
-    return updated;
+    return updatedConversation;
   }
 
-  async remove(id: Types.ObjectId): Promise<ConversationDocument> {
-    const deleted = await this.conversationRepository.deleteById(id);
-    if (!deleted) {
+  async unblock(
+    id: Types.ObjectId,
+    userId: string
+  ): Promise<ConversationDocument> {
+    const conversation = await this.findOne(id);
+
+    if (!this.isParticipant(conversation, userId)) {
+      throw new BadRequestException('User is not a participant in this conversation');
+    }
+
+    const updatedConversation = await this.conversationRepository.updateOne(
+      { _id: id },
+      { $pull: { blockedBy: userId } }
+    );
+
+    if (!updatedConversation) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }
-    return deleted;
+
+    return updatedConversation;
   }
 
-  async incrementParticipantCount(
+  async markAsDelivred(
     conversationId: Types.ObjectId,
+    userId: string
   ): Promise<ConversationDocument> {
-    const updated = await this.conversationRepository.incrementParticipantCount(
-      conversationId,
-    );
-    if (!updated) {
-      throw new NotFoundException(
-        `Conversation with ID ${conversationId} not found`,
-      );
+    const conversation = await this.findOne(conversationId);
+
+    if (!this.isParticipant(conversation, userId)) {
+      throw new BadRequestException('User is not a participant in this conversation');
     }
-    return updated;
+
+    const lastReadAt = conversation.lastReadAt || new Map();
+    lastReadAt.set(userId, new Date());
+
+    const updatedConversation = await this.conversationRepository.updateById(
+      conversationId,
+      { lastReadAt }
+    );
+
+    if (!updatedConversation) {
+      throw new NotFoundException(`Conversation with ID ${conversationId} not found`);
+    }
+
+    return updatedConversation;
+  }
+
+  async markAsRead(
+    conversationId: Types.ObjectId,
+    userId: string
+  ): Promise<ConversationDocument> {
+    const conversation = await this.findOne(conversationId);
+
+    if (!this.isParticipant(conversation, userId)) {
+      throw new BadRequestException('User is not a participant in this conversation');
+    }
+
+    const lastReadAt = conversation.lastReadAt || new Map();
+    lastReadAt.set(userId, new Date());
+
+    const updatedConversation = await this.conversationRepository.updateById(
+      conversationId,
+      { lastReadAt }
+    );
+
+    if (!updatedConversation) {
+      throw new NotFoundException(`Conversation with ID ${conversationId} not found`);
+    }
+
+    return updatedConversation;
   }
 
   async setLastMessage(
     conversationId: Types.ObjectId,
     messageId: Types.ObjectId,
   ): Promise<ConversationDocument> {
-    const updated = await this.conversationRepository.setLastMessage(
+    const updated = await this.conversationRepository.updateById(
       conversationId,
-      messageId,
+      {
+        lastMessage: messageId,
+        lastActivityAt: new Date(),
+      }
     );
-    if (!updated) {
-      throw new NotFoundException(
-        `Conversation with ID ${conversationId} not found`,
+
+    if (updated) {
+      await this.conversationRepository.updateOne(
+        { _id: conversationId },
+        { $inc: { messageCount: 1 } }
       );
     }
+
+    if (!updated) {
+      throw new NotFoundException(`Conversation with ID ${conversationId} not found`);
+    }
+
     return updated;
   }
 
-  async userIsParticipant(
-    conversationId: Types.ObjectId,
-    userId: Types.ObjectId,
-  ): Promise<boolean> {
-    // This would need integration with a participants service/repository
-    // Implementation depends on your participant management system
-    // This is just a placeholder implementation
-    const conversation = await this.findOne(conversationId);
-    return (conversation.participantCount ?? 0) > 0; // Simplified check
+  async deactivate(id: Types.ObjectId): Promise<ConversationDocument> {
+    const updated = await this.conversationRepository.updateById(id, {
+      isActive: false,
+      lastActivityAt: new Date()
+    });
+
+    if (!updated) {
+      throw new NotFoundException(`Conversation with ID ${id} not found`);
+    }
+
+    return updated;
+  }
+
+  private isParticipant(conversation: ConversationDocument, userId: string): boolean {
+    return conversation.participant1.toString() === userId ||
+      conversation.participant2.toString() === userId;
   }
 }

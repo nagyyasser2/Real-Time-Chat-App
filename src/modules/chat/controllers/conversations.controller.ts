@@ -28,19 +28,12 @@ export class ConversationsController {
     @Body() createDto: CreateConversationDto,
     @CurrentUser() user: User,
   ) {
-    return this.conversationsService.create(createDto, user._id);
+    var {participant1 , participant2} = createDto;
+    return this.conversationsService.create(participant1, participant2);
   }
 
   @Get(':id')
   async getOne(@Param('id') id: Types.ObjectId) {
     return this.conversationsService.findOne(id);
-  }
-
-  @Patch(':id')
-  async update(
-    @Param('id') id: Types.ObjectId,
-    @Body() updateDto: UpdateConversationDto,
-  ) {
-    return this.conversationsService.update(id, updateDto);
   }
 }

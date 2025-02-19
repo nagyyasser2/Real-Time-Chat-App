@@ -8,8 +8,8 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-import { AppGateway } from './app.gateway';
 import { ChatModule } from './modules/chat/chat.module';
+import { AppGateway } from './app.gateway';
 
 @Module({
   imports: [
@@ -26,6 +26,6 @@ import { ChatModule } from './modules/chat/chat.module';
     ChatModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AppGateway],
+  providers: [AppService],
 })
 export class AppModule { }
