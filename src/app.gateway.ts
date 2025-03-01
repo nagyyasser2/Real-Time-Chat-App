@@ -4,20 +4,20 @@ import {
     WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Inject, Injectable, UnauthorizedException, UseGuards } from '@nestjs/common';
-import { WsAuthGuard } from './modules/chat/guards/ws-auth.guard';
+import { UnauthorizedException } from '@nestjs/common';
+
 import { RedisStoreService } from './modules/chat/services/redis-store.service';
 
-// @UseGuards(WsAuthGuard)
+
 export abstract class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     protected server: Server;
 
-    constructor(protected readonly redisStoreService: RedisStoreService) { }
+    constructor(protected readonly redisStoreService: RedisStoreService) {}
 
     async handleConnection(client: Socket): Promise<void> {
         const userId = this.getUserIdFromSocket(client);
-        
+
         if (!userId) {
             throw new UnauthorizedException();
         }
@@ -36,7 +36,7 @@ export abstract class AppGateway implements OnGatewayConnection, OnGatewayDiscon
     }
 
     protected getUserIdFromSocket(client: Socket): string | null {
-        return client.handshake.auth.userId || null;
+        return client.data?.userId || null; 
     }
 
     protected abstract handleUserConnect(userId: string, client: Socket): Promise<void>;

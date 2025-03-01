@@ -9,7 +9,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { ChatModule } from './modules/chat/chat.module';
-import { AppGateway } from './app.gateway';
 
 @Module({
   imports: [

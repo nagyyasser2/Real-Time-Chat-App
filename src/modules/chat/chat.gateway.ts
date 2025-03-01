@@ -1,26 +1,31 @@
 import {
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  WebSocketServer,
   SubscribeMessage,
   WebSocketGateway,
   OnGatewayInit,
 } from '@nestjs/websockets';
-import { Socket } from 'socket.io';
-import { ChatEvents } from './events/chat.events';
-import { SendMessageDto } from './dtos/send-message.dto';
-import { AppGateway } from '../../app.gateway';
-import { RedisStoreService } from './services/redis-store.service';
+import { Server, Socket } from 'socket.io';
 import {
   Logger,
-  UsePipes,
-  ValidationPipe,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
-import { MissedEvent } from './interfaces/missed-event.interface';
-import { ConversationsService } from './services/conversations.service';
 import { Types } from 'mongoose';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { RedisStoreService } from './services/redis-store.service';
+import { ConversationsService } from './services/conversations.service';
 import { MessagesService } from './services/messages.service';
-import { MessageStatus } from './enums/message-status.enum';
 import { UsersService } from '../users/services/users.service';
+import { ChatEvents } from './events/chat.events';
+import { WsAuthGuard } from './guards/ws-auth.guard';
 import { CreateConversationDto } from './dtos/create-conversation.dto';
+import { SendMessageDto } from './dtos/send-message.dto';
+import { MissedEvent } from './interfaces/missed-event.interface';
+import { MessageStatus } from './enums/message-status.enum';
+
 
 @WebSocketGateway({
   cors: {
@@ -28,44 +33,70 @@ import { CreateConversationDto } from './dtos/create-conversation.dto';
   },
   namespace: 'chat',
 })
-@UsePipes(new ValidationPipe())
-export class ChatGateway extends AppGateway implements OnGatewayInit {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   private readonly logger = new Logger(ChatGateway.name);
+
+  @WebSocketServer()
+  protected server: Server;
 
   constructor(
     private readonly redisStore: RedisStoreService,
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
     protected readonly usersService: UsersService,
-  ) {
-    super(redisStore);
-  }
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async afterInit(): Promise<void> {
-    await this.redisStore.subscribe('chat:message', (message) => {
-      this.handleRedisMessage(message);
-    });
+    // Initialize any required resources here
   }
 
-  private async handleRedisMessage(message: any): Promise<void> {
+  async handleConnection(client: Socket): Promise<void> {
     try {
-      if (message.event === ChatEvents.RECEIVE_MESSAGE) {
-        const conversation = await this.conversationsService.findOne(
-          new Types.ObjectId(message.conversationId),
-        );
+      // Handle authentication directly in the connection method
+      const authHeader = client.handshake.headers.authorization;
+      const token = client.handshake.auth?.token || (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null);
+      
+      if (!token) {
+        this.logger.error('Authentication token not provided');
+        client.disconnect();
+        return;
+      }
 
-        if (
-          conversation &&
-          !conversation.blockedBy.includes(message.receiverId)
-        ) {
-          this.server
-            .to(message.conversationId)
-            .emit(ChatEvents.RECEIVE_MESSAGE, message.payload);
-        }
+      try {
+        const payload = await this.jwtService.verifyAsync(token, {
+          secret: this.configService.get('jwt')?.secret,
+        });
+        
+        const userId = payload.sub;
+        client.data = { userId };
+        
+        // Now proceed with the regular connection flow
+        this.redisStore.addUser(userId, client.id);
+        await this.handleUserConnect(userId, client);
+      } catch (err) {
+        this.logger.error('Invalid authentication token', err);
+        client.disconnect();
+        return;
       }
     } catch (error) {
-      this.logger.error('Error handling Redis message:', error);
+      this.logger.error('Connection error:', error);
+      client.disconnect();
     }
+  }
+
+  async handleDisconnect(client: Socket): Promise<void> {
+    const userId = this.getUserIdFromSocket(client);
+    if (userId) {
+      client.leave(userId);
+      this.redisStore.removeUser(userId);
+      await this.handleUserDisconnect(userId);
+    }
+  }
+
+  protected getUserIdFromSocket(client: Socket): string | null {
+    return client.data?.userId || null;
   }
 
   private async processMissedEvents(userId: any): Promise<void> {
@@ -90,13 +121,26 @@ export class ChatGateway extends AppGateway implements OnGatewayInit {
       throw new BadRequestException('User not found');
     }
 
-    user.contacts.forEach((contact) => {
+    user.contacts?.forEach((contact) => {
       if (!contact.blocked) {
-        if (contact.room) {
-          client.join(contact.room.toString());
+        if (contact.userId) {
+          client.join(contact.userId.toString());
         }
-        if (contact.user) {
-          client.join(contact.user.toString());
+      }
+    });
+
+    user.rooms?.forEach((contact) => {
+      if (!contact.blocked) {
+        if (contact.roomId) {
+          client.join(contact.roomId.toString());
+        }
+      }
+    });
+
+    user.channels?.forEach((contact) => {
+      if (!contact.blocked) {
+        if (contact.channelId) {
+          client.join(contact.channelId.toString());
         }
       }
     });
@@ -108,10 +152,11 @@ export class ChatGateway extends AppGateway implements OnGatewayInit {
   ): Promise<void> {
     try {
       this.logger.log(`User connected: ${client.id}`);
-      await this.joinUserRooms(userId, client);
       await this.processMissedEvents(userId);
+      await this.joinUserRooms(userId, client);
     } catch (error) {
       this.logger.error(`Connection error for user ${userId}:`, error);
+      client.disconnect();
     }
   }
 
@@ -121,6 +166,7 @@ export class ChatGateway extends AppGateway implements OnGatewayInit {
   }
 
   @SubscribeMessage(ChatEvents.CREATE_CONVERSATION)
+  @UseGuards(WsAuthGuard) // Apply guard to individual methods
   async handleCreateConversation(
     client: Socket,
     payload: CreateConversationDto,
@@ -147,8 +193,8 @@ export class ChatGateway extends AppGateway implements OnGatewayInit {
       const conversation = existingConversation.data.find(
         (c) =>
           (c.participant1.toString() === senderId &&
-            c.participant2.toString() === senderId) ||
-          (c.participant1.toString() === senderId &&
+            c.participant2.toString() === participant2) ||
+          (c.participant1.toString() === participant2 &&
             c.participant2.toString() === senderId),
       );
 
@@ -159,14 +205,14 @@ export class ChatGateway extends AppGateway implements OnGatewayInit {
 
       // Create a new conversation
       const newConversation = await this.conversationsService.create(
-        senderId ,
+        senderId,
         participant2,
       );
 
       // Notify both users
       client.emit(ChatEvents.CONVERSATION_CREATED, newConversation);
       this.server
-        .to(senderId.toString())
+        .to(participant2.toString())
         .emit(ChatEvents.NEW_CONVERSATION, newConversation);
     } catch (error) {
       client.emit(ChatEvents.ERROR, { message: error.message });
@@ -174,6 +220,7 @@ export class ChatGateway extends AppGateway implements OnGatewayInit {
   }
 
   @SubscribeMessage(ChatEvents.SEND_MESSAGE)
+  @UseGuards(WsAuthGuard) // Apply guard to individual methods
   async handleMessage(client: Socket, payload: SendMessageDto): Promise<void> {
     const senderId = this.getUserIdFromSocket(client);
     if (!senderId) return;

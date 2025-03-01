@@ -57,18 +57,42 @@ export class User {
   @Prop({
     type: [
       {
-        type: { type: String, required: true, default: 'personal' },
         user: { type: Types.ObjectId, ref: 'User' },
-        room: { type: Types.ObjectId, ref: 'Conversation' },
         blocked: { type: Boolean, default: false },
       },
     ],
     default: [],
   })
   contacts: Array<{
-    type: string;
-    user?: Types.ObjectId;
-    room?: Types.ObjectId;
+    userId: Types.ObjectId;
+    blocked: boolean;
+  }>;
+
+  @Prop({
+    type: [
+      {
+        room: { type: Types.ObjectId, ref: 'Room' },
+        blocked: { type: Boolean, default: false },
+      },
+    ],
+    default: [],
+  })
+  rooms: Array<{
+    roomId: Types.ObjectId;
+    blocked: boolean;
+  }>;
+
+  @Prop({
+    type: [
+      {
+        channel: { type: Types.ObjectId, ref: 'Channel' },
+        blocked: { type: Boolean, default: false },
+      },
+    ],
+    default: [],
+  })
+  channels: Array<{
+    channelId: Types.ObjectId;
     blocked: boolean;
   }>;
 }
