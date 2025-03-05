@@ -33,7 +33,7 @@ import { MessageStatus } from './enums/message-status.enum';
   },
   namespace: 'chat',
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
+export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit{
   private readonly logger = new Logger(ChatGateway.name);
 
   @WebSocketServer()
@@ -146,6 +146,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     });
   }
 
+  private async notifyContactsWithUserStatus (){
+
+  }
+
+  private async notifyUserWithOnlineContacts () {
+
+  }
+
   protected async handleUserConnect(
     userId: any,
     client: Socket,
@@ -154,6 +162,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.log(`User connected: ${client.id}`);
       await this.processMissedEvents(userId);
       await this.joinUserRooms(userId, client);
+      await this.notifyContactsWithUserStatus();
+      await this.notifyUserWithOnlineContacts();
     } catch (error) {
       this.logger.error(`Connection error for user ${userId}:`, error);
       client.disconnect();
@@ -163,10 +173,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   protected async handleUserDisconnect(userId: string): Promise<void> {
     this.logger.log(`User disconnected: ${userId}`);
     await this.redisStore.removeUser(userId);
+    await this.notifyContactsWithUserStatus();
   }
 
   @SubscribeMessage(ChatEvents.CREATE_CONVERSATION)
-  @UseGuards(WsAuthGuard) // Apply guard to individual methods
+  @UseGuards(WsAuthGuard) 
   async handleCreateConversation(
     client: Socket,
     payload: CreateConversationDto,
@@ -220,7 +231,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   @SubscribeMessage(ChatEvents.SEND_MESSAGE)
-  @UseGuards(WsAuthGuard) // Apply guard to individual methods
+  @UseGuards(WsAuthGuard) 
   async handleMessage(client: Socket, payload: SendMessageDto): Promise<void> {
     const senderId = this.getUserIdFromSocket(client);
     if (!senderId) return;
