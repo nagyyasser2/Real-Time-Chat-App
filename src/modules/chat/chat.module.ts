@@ -8,7 +8,7 @@ import { Message, MessageSchema } from './schemas/message.schema';
 import { Participant, ParticipantSchema } from './schemas/participant.schema';
 import { MessagesService } from './services/messages.service';
 import { MessageRepository } from './repositories/message.repository';
-import { ChatGateway } from './chat.gateway';
+import { ChatGateway } from './gateways/chat.gateway';
 import { ChannelsMetadataService } from './services/channels-metadata.service';
 import { ChannelsMetadataRepository } from './repositories/channels-metadata.repository'; // <-- Import the repository
 import { RedisStoreService } from './services/redis-store.service';

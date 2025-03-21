@@ -15,16 +15,16 @@ import {
 import { Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { RedisStoreService } from './services/redis-store.service';
-import { ConversationsService } from './services/conversations.service';
-import { MessagesService } from './services/messages.service';
-import { UsersService } from '../users/services/users.service';
-import { ChatEvents } from './events/chat.events';
-import { WsAuthGuard } from './guards/ws-auth.guard';
-import { CreateConversationDto } from './dtos/create-conversation.dto';
-import { SendMessageDto } from './dtos/send-message.dto';
-import { MissedEvent } from './interfaces/missed-event.interface';
-import { MessageStatus } from './enums/message-status.enum';
+import { RedisStoreService } from '../services/redis-store.service';
+import { ConversationsService } from '../services/conversations.service';
+import { MessagesService } from '../services/messages.service';
+import { UsersService } from '../../users/services/users.service';
+import { ChatEvents } from '../events/chat.events';
+import { WsAuthGuard } from '../guards/ws-auth.guard';
+import { CreateConversationDto } from '../dtos/create-conversation.dto';
+import { SendMessageDto } from '../dtos/send-message.dto';
+import { MissedEvent } from '../interfaces/missed-event.interface';
+import { MessageStatus } from '../enums/message-status.enum';
 
 
 @WebSocketGateway({
@@ -100,6 +100,7 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
   }
 
   private async processMissedEvents(userId: any): Promise<void> {
+    this.logger.debug("processing missed events...");
     const missedEvents = await this.redisStore.getMissedEvents(userId);
     if (missedEvents.length > 0) {
       missedEvents.sort((a, b) => a.timestamp - b.timestamp);
@@ -113,6 +114,7 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
   }
 
   private async joinUserRooms(userId: any, client: Socket): Promise<void> {
+    this.logger.debug("joiningUserRooms...");
     client.join(userId);
 
     const user = await this.usersService.findOne(userId);
@@ -146,13 +148,49 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
     });
   }
 
-  private async notifyContactsWithUserStatus (){
-
+  private async notifyContactsWithUserStatus(userId: string, status: 'online' | 'offline'): Promise<void> {
+    this.logger.debug("notifyingContactsWithUserStauts....");
+    try {
+      const user = await this.usersService.findOne(userId);
+      if (!user) return;
+      
+      const contacts = user.contacts?.filter(contact => !contact.blocked) || [];
+      
+      for (const contact of contacts) {
+        if (contact.userId) {
+          this.server.to(contact.userId.toString()).emit('user-status', {
+            userId,
+            status,
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to notify contacts about user ${userId} status:`, error);
+    }
   }
 
-  private async notifyUserWithOnlineContacts () {
-
+  private async notifyUserWithOnlineContacts(userId: string, client: Socket): Promise<void> {
+    this.logger.debug("notifyingUserWithOnlineContacts...")
+    try {
+      const user = await this.usersService.findOne(userId);
+      if (!user) return;
+      
+      const onlineContacts: any = [];
+      const contacts = user.contacts?.filter(contact => !contact.blocked) || [];
+      
+      for (const contact of contacts) {
+        const isOnline = await this.redisStore.isUserOnline(contact.userId.toString());
+        if (isOnline) {
+          onlineContacts.push(contact.userId);
+        }
+      }
+      
+      client.emit('online-contacts', { onlineContacts });
+    } catch (error) {
+      this.logger.error(`Failed to notify user ${userId} with online contacts:`, error);
+    }
   }
+
 
   protected async handleUserConnect(
     userId: any,
@@ -162,8 +200,8 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
       this.logger.log(`User connected: ${client.id}`);
       await this.processMissedEvents(userId);
       await this.joinUserRooms(userId, client);
-      await this.notifyContactsWithUserStatus();
-      await this.notifyUserWithOnlineContacts();
+      await this.notifyContactsWithUserStatus(userId, "online");
+      await this.notifyUserWithOnlineContacts(userId, client);
     } catch (error) {
       this.logger.error(`Connection error for user ${userId}:`, error);
       client.disconnect();
@@ -173,11 +211,10 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
   protected async handleUserDisconnect(userId: string): Promise<void> {
     this.logger.log(`User disconnected: ${userId}`);
     await this.redisStore.removeUser(userId);
-    await this.notifyContactsWithUserStatus();
+    await this.notifyContactsWithUserStatus(userId, "offline");
   }
 
   @SubscribeMessage(ChatEvents.CREATE_CONVERSATION)
-  @UseGuards(WsAuthGuard) 
   async handleCreateConversation(
     client: Socket,
     payload: CreateConversationDto,
@@ -231,7 +268,6 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
   }
 
   @SubscribeMessage(ChatEvents.SEND_MESSAGE)
-  @UseGuards(WsAuthGuard) 
   async handleMessage(client: Socket, payload: SendMessageDto): Promise<void> {
     const senderId = this.getUserIdFromSocket(client);
     if (!senderId) return;
