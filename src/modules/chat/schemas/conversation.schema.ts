@@ -11,6 +11,9 @@ export class Conversation {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   participant2: Types.ObjectId;
 
+  @Prop({ type: String,  required: true })
+  conversationKey: string;
+
   @Prop({ type: Boolean, default: true })
   isActive: boolean;
 
@@ -35,7 +38,14 @@ export class Conversation {
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);
 
-// Indexes for common queries
-ConversationSchema.index({ participant1: 1, participant2: 1 }, { unique: true });
+// Middleware to generate a unique conversationKey before saving
+ConversationSchema.pre('validate', function (next) {
+  const ids = [this.participant1.toString(), this.participant2.toString()].sort();
+  this.conversationKey = `${ids[0]}_${ids[1]}`;
+  next();
+});
+
+// Indexes for efficient queries
+ConversationSchema.index({ conversationKey: 1 }, { unique: true });
 ConversationSchema.index({ lastActivityAt: -1 });
 ConversationSchema.index({ isActive: 1 });

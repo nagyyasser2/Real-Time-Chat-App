@@ -1,7 +1,7 @@
 export enum ChatEvents {
     CONNECT = 'connect',
     DISCONNECT = 'disconnect',
-    CREATE_CONVERSATION= 'createconversation',
+    START_CONVERSATION= 'START_CONVERSATION',
     JOIN_CHAT = 'joinChat',
     LEAVE_CHAT = 'leaveChat',
     SEND_MESSAGE = 'sendMessage',
@@ -10,11 +10,10 @@ export enum ChatEvents {
     USER_STOP_TYPING = 'userStopTyping',
     MESSAGE_DELIVERED = 'messageDelivered',
     MESSAGE_READ = 'messageRead',
-    ERROR = 'error',
+    ERROR = 'ERROR',
     CONVERSATION_CREATED = 'CONVERSATION_CREATED',
     NEW_CONVERSATION = 'NEW_CONVERSATION',
     CONVERSATION_EXISTS= 'CONVERSATION_EXISTS',
-    
     ONLINE_CONTACTS = 'ONLINE_CONTACTS',
     USER_ONLINE = 'USER_ONLINE',
     USER_OFLINE = 'USER_OFLINE'

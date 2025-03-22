@@ -1,11 +1,11 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 import { SocketUser } from '../interfaces/socket-user.interface';
 import { MissedEvent } from '../interfaces/missed-event.interface';
 import { redisConfig } from 'src/config/redis.config';
 
 @Injectable()
-export class RedisStoreService implements OnModuleDestroy {
+export class RedisStoreService implements OnModuleInit, OnModuleDestroy {
     private readonly redis: Redis;
     private readonly redisSub: Redis;
     private readonly redisPub: Redis;
@@ -14,6 +14,14 @@ export class RedisStoreService implements OnModuleDestroy {
         this.redis = new Redis(redisConfig);
         this.redisSub = new Redis(redisConfig);
         this.redisPub = new Redis(redisConfig);
+    }
+
+    async onModuleInit() {
+        // Remove all online users from Redis on startup
+        const keys = await this.redis.keys('socket:user:*');
+        if (keys.length > 0) {
+            await this.redis.del(...keys);
+        }
     }
 
     async onModuleDestroy() {

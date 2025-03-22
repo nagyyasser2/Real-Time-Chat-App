@@ -8,6 +8,7 @@ import {
 import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from '../enums/profile-photo.enum';
 import { Type } from 'class-transformer';
+import { Country } from '../enums/countries.enum';
 
 class PrivacySettingsDto {
   @IsEnum(LastSeenVisibility)
@@ -35,6 +36,10 @@ export class CreateUserDto {
   @IsNotEmpty()
   @IsString()
   password: string;
+
+  @IsNotEmpty()
+  @IsString()
+  country: Country;
 
   @IsOptional()
   @IsString()

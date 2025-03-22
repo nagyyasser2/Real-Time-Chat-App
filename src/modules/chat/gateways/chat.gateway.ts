@@ -5,12 +5,15 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   OnGatewayInit,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import {
   Logger,
   BadRequestException,
   UseGuards,
+  ConflictException,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -26,14 +29,15 @@ import { SendMessageDto } from '../dtos/send-message.dto';
 import { MissedEvent } from '../interfaces/missed-event.interface';
 import { MessageStatus } from '../enums/message-status.enum';
 
-
 @WebSocketGateway({
   cors: {
     origin: '*',
   },
   namespace: 'chat',
 })
-export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit{
+export class ChatGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
+{
   private readonly logger = new Logger(ChatGateway.name);
 
   @WebSocketServer()
@@ -56,8 +60,10 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
     try {
       // Handle authentication directly in the connection method
       const authHeader = client.handshake.headers.authorization;
-      const token = client.handshake.auth?.token || (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null);
-      
+      const token =
+        client.handshake.auth?.token ||
+        (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null);
+
       if (!token) {
         this.logger.error('Authentication token not provided');
         client.disconnect();
@@ -68,10 +74,10 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
         const payload = await this.jwtService.verifyAsync(token, {
           secret: this.configService.get('jwt')?.secret,
         });
-        
+
         const userId = payload.sub;
         client.data = { userId };
-        
+
         // Now proceed with the regular connection flow
         this.redisStore.addUser(userId, client.id);
         await this.handleUserConnect(userId, client);
@@ -100,21 +106,51 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
   }
 
   private async processMissedEvents(userId: any): Promise<void> {
-    this.logger.debug("processing missed events...");
-    const missedEvents = await this.redisStore.getMissedEvents(userId);
-    if (missedEvents.length > 0) {
-      missedEvents.sort((a, b) => a.timestamp - b.timestamp);
+    this.logger.debug(`Processing missed events for user: ${userId}...`);
 
-      for (const event of missedEvents) {
-        this.server.to(userId).emit(event.eventName, event.payload);
-      }
+    // Ensure missedEvents is always an array
+    const missedEvents = (await this.redisStore.getMissedEvents(userId)) || [];
 
-      await this.redisStore.clearMissedEvents(userId);
+    if (missedEvents.length === 0) {
+      this.logger.debug(`No missed events found for user: ${userId}`);
+      return;
     }
+
+    // Sort events chronologically
+    missedEvents.sort((a, b) => a.timestamp - b.timestamp);
+
+    this.logger.debug(
+      `Found ${missedEvents.length} missed events for user: ${userId}`,
+    );
+
+    // Ensure the user is in their own room before emitting events
+    await this.server
+      .in(userId)
+      .fetchSockets()
+      .then(async (sockets) => {
+        if (sockets.length === 0) {
+          this.logger.warn(`User ${userId} is not in a room. Joining now...`);
+          this.server.socketsJoin(userId);
+        }
+      });
+
+    // Small delay to ensure the user is ready to receive events
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    for (const event of missedEvents) {
+      this.logger.debug(
+        `Sending missed event to ${userId}: ${event.eventName}`,
+      );
+      this.server.to(userId).emit(event.eventName, event.payload);
+    }
+
+    // Clear missed events after successfully sending them
+    await this.redisStore.clearMissedEvents(userId);
+    this.logger.debug(`Cleared missed events for user: ${userId}`);
   }
 
   private async joinUserRooms(userId: any, client: Socket): Promise<void> {
-    this.logger.debug("joiningUserRooms...");
+    this.logger.debug('joiningUserRooms...');
     client.join(userId);
 
     const user = await this.usersService.findOne(userId);
@@ -148,14 +184,18 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
     });
   }
 
-  private async notifyContactsWithUserStatus(userId: string, status: 'online' | 'offline'): Promise<void> {
-    this.logger.debug("notifyingContactsWithUserStauts....");
+  private async notifyContactsWithUserStatus(
+    userId: string,
+    status: 'online' | 'offline',
+  ): Promise<void> {
+    this.logger.debug('notifyingContactsWithUserStauts....');
     try {
       const user = await this.usersService.findOne(userId);
       if (!user) return;
-      
-      const contacts = user.contacts?.filter(contact => !contact.blocked) || [];
-      
+
+      const contacts =
+        user.contacts?.filter((contact) => !contact.blocked) || [];
+
       for (const contact of contacts) {
         if (contact.userId) {
           this.server.to(contact.userId.toString()).emit('user-status', {
@@ -165,42 +205,53 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
         }
       }
     } catch (error) {
-      this.logger.error(`Failed to notify contacts about user ${userId} status:`, error);
+      this.logger.error(
+        `Failed to notify contacts about user ${userId} status:`,
+        error,
+      );
     }
   }
 
-  private async notifyUserWithOnlineContacts(userId: string, client: Socket): Promise<void> {
-    this.logger.debug("notifyingUserWithOnlineContacts...")
+  private async notifyUserWithOnlineContacts(
+    userId: string,
+    client: Socket,
+  ): Promise<void> {
+    this.logger.debug('notifyingUserWithOnlineContacts...');
     try {
       const user = await this.usersService.findOne(userId);
       if (!user) return;
-      
+
       const onlineContacts: any = [];
-      const contacts = user.contacts?.filter(contact => !contact.blocked) || [];
-      
+      const contacts =
+        user.contacts?.filter((contact) => !contact.blocked) || [];
+
       for (const contact of contacts) {
-        const isOnline = await this.redisStore.isUserOnline(contact.userId.toString());
+        const isOnline = await this.redisStore.isUserOnline(
+          contact.userId.toString(),
+        );
         if (isOnline) {
           onlineContacts.push(contact.userId);
         }
       }
-      
+
       client.emit('online-contacts', { onlineContacts });
     } catch (error) {
-      this.logger.error(`Failed to notify user ${userId} with online contacts:`, error);
+      this.logger.error(
+        `Failed to notify user ${userId} with online contacts:`,
+        error,
+      );
     }
   }
-
 
   protected async handleUserConnect(
     userId: any,
     client: Socket,
   ): Promise<void> {
     try {
-      this.logger.log(`User connected: ${client.id}`);
+      this.logger.verbose(`User connected: ${userId}`);
       await this.processMissedEvents(userId);
       await this.joinUserRooms(userId, client);
-      await this.notifyContactsWithUserStatus(userId, "online");
+      await this.notifyContactsWithUserStatus(userId, 'online');
       await this.notifyUserWithOnlineContacts(userId, client);
     } catch (error) {
       this.logger.error(`Connection error for user ${userId}:`, error);
@@ -211,57 +262,44 @@ export class ChatGateway implements  OnGatewayConnection, OnGatewayDisconnect, O
   protected async handleUserDisconnect(userId: string): Promise<void> {
     this.logger.log(`User disconnected: ${userId}`);
     await this.redisStore.removeUser(userId);
-    await this.notifyContactsWithUserStatus(userId, "offline");
+    await this.notifyContactsWithUserStatus(userId, 'offline');
   }
 
-  @SubscribeMessage(ChatEvents.CREATE_CONVERSATION)
+  @SubscribeMessage(ChatEvents.START_CONVERSATION)
   async handleCreateConversation(
-    client: Socket,
-    payload: CreateConversationDto,
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: CreateConversationDto,
   ): Promise<void> {
     const senderId = this.getUserIdFromSocket(client);
     if (!senderId) return;
 
     const { participant2 } = payload;
-    const participantObjectId = new Types.ObjectId(participant2);
-    const senderObjectId = new Types.ObjectId(senderId);
 
     try {
-      // Ensure participant is not the sender
-      if (senderId === participant2) {
-        client.emit(ChatEvents.ERROR, {
-          message: 'Cannot create a conversation with yourself',
-        });
-        return;
-      }
-
-      // Check if a conversation already exists
-      const existingConversation =
-        await this.conversationsService.findUserConversations(senderId, 0, 100);
-      const conversation = existingConversation.data.find(
-        (c) =>
-          (c.participant1.toString() === senderId &&
-            c.participant2.toString() === participant2) ||
-          (c.participant1.toString() === participant2 &&
-            c.participant2.toString() === senderId),
-      );
-
-      if (conversation) {
-        client.emit(ChatEvents.CONVERSATION_EXISTS, conversation);
-        return;
-      }
-
-      // Create a new conversation
-      const newConversation = await this.conversationsService.create(
+      let conversation = await this.conversationsService.create(
         senderId,
         participant2,
       );
 
-      // Notify both users
-      client.emit(ChatEvents.CONVERSATION_CREATED, newConversation);
+      client.emit(ChatEvents.CONVERSATION_CREATED, conversation);
       this.server
-        .to(participant2.toString())
-        .emit(ChatEvents.NEW_CONVERSATION, newConversation);
+        .to(participant2)
+        .emit(ChatEvents.NEW_CONVERSATION, conversation);
+
+      // Check if participant2 is online
+      const participantOnline =
+        await this.redisStore.isUserOnline(participant2);
+
+      if (!participantOnline) {
+        const missedEvent: MissedEvent = {
+          eventName: ChatEvents.NEW_CONVERSATION,
+          payload: conversation,
+          timestamp: Date.now(),
+          conversationId: conversation.id,
+        };
+
+        await this.redisStore.storeMissedEvent(participant2, missedEvent);
+      }
     } catch (error) {
       client.emit(ChatEvents.ERROR, { message: error.message });
     }

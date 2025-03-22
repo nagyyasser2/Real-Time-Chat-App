@@ -14,36 +14,39 @@ export class ConversationsService {
     private readonly conversationRepository: ConversationRepository,
   ) { }
 
-
-
   async create(
-    participant1Id: string, // Accept strings as input
+    participant1Id: string, 
     participant2Id: string
   ): Promise<ConversationDocument> {
     try {
       if (participant1Id === participant2Id) {
-        throw new BadRequestException('Cannot create conversation with yourself');
+        throw new BadRequestException('Cannot create a conversation with yourself');
       }
   
-      // Convert string to ObjectId
+      // Convert participant IDs to ObjectId
       const objectId1 = new Types.ObjectId(participant1Id);
       const objectId2 = new Types.ObjectId(participant2Id);
   
-      // Sort participant IDs to ensure consistent uniqueness check
-      const [sortedParticipant1, sortedParticipant2] = [objectId1, objectId2].sort();
+      // Ensure a consistent order for storage
+      const [sortedParticipant1, sortedParticipant2] = 
+        [objectId1.toString(), objectId2.toString()].sort();
+      const participant1 = new Types.ObjectId(sortedParticipant1);
+      const participant2 = new Types.ObjectId(sortedParticipant2);
   
-      const existingConversation = await this.conversationRepository.findOne({
-        participant1: sortedParticipant1,
-        participant2: sortedParticipant2,
-      });
+      // Generate a unique conversation key
+      const conversationKey = `${sortedParticipant1}_${sortedParticipant2}`;
   
+      // Check if a conversation already exists using the repository method
+      const existingConversation = await this.conversationRepository.findOne({ conversationKey });
       if (existingConversation) {
         throw new ConflictException('Conversation already exists between these users');
       }
   
-      const conversation = await this.conversationRepository.create({
-        participant1: sortedParticipant1,
-        participant2: sortedParticipant2,
+      // Create and save the conversation
+      return await this.conversationRepository.create({
+        participant1,
+        participant2,
+        conversationKey, // Ensure uniqueness
         lastActivityAt: new Date(),
         isActive: true,
         messageCount: 0,
@@ -53,8 +56,6 @@ export class ConversationsService {
           [participant2Id, new Date()],
         ]),
       });
-  
-      return conversation;
     } catch (error) {
       if (error.code === 11000) {
         throw new ConflictException('Conversation already exists between these users');
@@ -63,7 +64,7 @@ export class ConversationsService {
     }
   }
   
-
+  
   async findUserConversations(
     userId: string,
     skip = 0,
@@ -89,7 +90,6 @@ export class ConversationsService {
       { lastActivityAt: -1 }
     );
   }
-
   async findOne(id: Types.ObjectId): Promise<ConversationDocument> {
     const conversation = await this.conversationRepository.findById(id);
     if (!conversation) {
@@ -97,10 +97,9 @@ export class ConversationsService {
     }
     return conversation;
   }
-
   async archive(
     id: Types.ObjectId,
-    userId: string
+    userId: Types.ObjectId
   ): Promise<ConversationDocument> {
     const conversation = await this.findOne(id);
 
@@ -114,10 +113,9 @@ export class ConversationsService {
     }
     return updatedConversation;
   }
-
   async block(
     id: Types.ObjectId,
-    userId: string
+    userId: Types.ObjectId
   ): Promise<ConversationDocument> {
     const conversation = await this.findOne(id);
 
@@ -140,10 +138,9 @@ export class ConversationsService {
 
     return updatedConversation;
   }
-
   async unblock(
     id: Types.ObjectId,
-    userId: string
+    userId: Types.ObjectId
   ): Promise<ConversationDocument> {
     const conversation = await this.findOne(id);
 
@@ -162,10 +159,9 @@ export class ConversationsService {
 
     return updatedConversation;
   }
-
   async markAsDelivred(
     conversationId: Types.ObjectId,
-    userId: string
+    userId: Types.ObjectId
   ): Promise<ConversationDocument> {
     const conversation = await this.findOne(conversationId);
 
@@ -174,7 +170,7 @@ export class ConversationsService {
     }
 
     const lastReadAt = conversation.lastReadAt || new Map();
-    lastReadAt.set(userId, new Date());
+    lastReadAt.set(userId.toString(), new Date());
 
     const updatedConversation = await this.conversationRepository.updateById(
       conversationId,
@@ -187,10 +183,9 @@ export class ConversationsService {
 
     return updatedConversation;
   }
-
   async markAsRead(
     conversationId: Types.ObjectId,
-    userId: string
+    userId: Types.ObjectId
   ): Promise<ConversationDocument> {
     const conversation = await this.findOne(conversationId);
 
@@ -199,7 +194,7 @@ export class ConversationsService {
     }
 
     const lastReadAt = conversation.lastReadAt || new Map();
-    lastReadAt.set(userId, new Date());
+    lastReadAt.set(userId.toString(), new Date());
 
     const updatedConversation = await this.conversationRepository.updateById(
       conversationId,
@@ -212,7 +207,6 @@ export class ConversationsService {
 
     return updatedConversation;
   }
-
   async setLastMessage(
     conversationId: Types.ObjectId,
     messageId: Types.ObjectId,
@@ -238,7 +232,6 @@ export class ConversationsService {
 
     return updated;
   }
-
   async deactivate(id: Types.ObjectId): Promise<ConversationDocument> {
     const updated = await this.conversationRepository.updateById(id, {
       isActive: false,
@@ -251,9 +244,8 @@ export class ConversationsService {
 
     return updated;
   }
-
-  private isParticipant(conversation: ConversationDocument, userId: string): boolean {
-    return conversation.participant1.toString() === userId ||
-      conversation.participant2.toString() === userId;
+  private isParticipant(conversation: ConversationDocument, userId: Types.ObjectId): boolean {
+    return conversation.participant1 === userId ||
+      conversation.participant2 === userId;
   }
 }
