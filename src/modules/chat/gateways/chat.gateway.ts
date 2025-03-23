@@ -28,6 +28,7 @@ import { CreateConversationDto } from '../dtos/create-conversation.dto';
 import { SendMessageDto } from '../dtos/send-message.dto';
 import { MissedEvent } from '../interfaces/missed-event.interface';
 import { MessageStatus } from '../enums/message-status.enum';
+import { CreateMessageDto } from '../dtos/create-message.dto';
 
 @WebSocketGateway({
   cors: {
@@ -58,7 +59,6 @@ export class ChatGateway
 
   async handleConnection(client: Socket): Promise<void> {
     try {
-      // Handle authentication directly in the connection method
       const authHeader = client.handshake.headers.authorization;
       const token =
         client.handshake.auth?.token ||
@@ -78,7 +78,6 @@ export class ChatGateway
         const userId = payload.sub;
         client.data = { userId };
 
-        // Now proceed with the regular connection flow
         this.redisStore.addUser(userId, client.id);
         await this.handleUserConnect(userId, client);
       } catch (err) {
@@ -108,7 +107,6 @@ export class ChatGateway
   private async processMissedEvents(userId: any): Promise<void> {
     this.logger.debug(`Processing missed events for user: ${userId}...`);
 
-    // Ensure missedEvents is always an array
     const missedEvents = (await this.redisStore.getMissedEvents(userId)) || [];
 
     if (missedEvents.length === 0) {
@@ -116,14 +114,12 @@ export class ChatGateway
       return;
     }
 
-    // Sort events chronologically
     missedEvents.sort((a, b) => a.timestamp - b.timestamp);
 
     this.logger.debug(
       `Found ${missedEvents.length} missed events for user: ${userId}`,
     );
 
-    // Ensure the user is in their own room before emitting events
     await this.server
       .in(userId)
       .fetchSockets()
@@ -134,7 +130,6 @@ export class ChatGateway
         }
       });
 
-    // Small delay to ensure the user is ready to receive events
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     for (const event of missedEvents) {
@@ -144,7 +139,6 @@ export class ChatGateway
       this.server.to(userId).emit(event.eventName, event.payload);
     }
 
-    // Clear missed events after successfully sending them
     await this.redisStore.clearMissedEvents(userId);
     this.logger.debug(`Cleared missed events for user: ${userId}`);
   }
@@ -198,10 +192,17 @@ export class ChatGateway
 
       for (const contact of contacts) {
         if (contact.userId) {
-          this.server.to(contact.userId.toString()).emit('user-status', {
-            userId,
-            status,
-          });
+          this.server
+            .to(contact.userId.toString())
+            .emit(
+              status === 'online'
+                ? ChatEvents.USER_ONLINE
+                : ChatEvents.USER_OFLINE,
+              {
+                userId,
+                status,
+              },
+            );
         }
       }
     } catch (error) {
@@ -234,7 +235,7 @@ export class ChatGateway
         }
       }
 
-      client.emit('online-contacts', { onlineContacts });
+      client.emit(ChatEvents.ONLINE_CONTACTS, { onlineContacts });
     } catch (error) {
       this.logger.error(
         `Failed to notify user ${userId} with online contacts:`,
@@ -286,7 +287,6 @@ export class ChatGateway
         .to(participant2)
         .emit(ChatEvents.NEW_CONVERSATION, conversation);
 
-      // Check if participant2 is online
       const participantOnline =
         await this.redisStore.isUserOnline(participant2);
 
@@ -306,15 +306,22 @@ export class ChatGateway
   }
 
   @SubscribeMessage(ChatEvents.SEND_MESSAGE)
-  async handleMessage(client: Socket, payload: SendMessageDto): Promise<void> {
+  async handleMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: SendMessageDto,
+  ): Promise<void> {
     const senderId = this.getUserIdFromSocket(client);
-    if (!senderId) return;
+    if (!senderId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
 
     try {
-      const conversation = await this.conversationsService.findOne(
-        new Types.ObjectId(payload.conversationId),
-      );
+      const conversationId = new Types.ObjectId(payload.conversationId);
+      const receiverId = new Types.ObjectId(payload.receiverId);
 
+      const conversation =
+        await this.conversationsService.findOne(conversationId);
       if (!conversation) {
         throw new BadRequestException('Conversation not found');
       }
@@ -326,21 +333,30 @@ export class ChatGateway
         throw new BadRequestException('Not a conversation participant');
       }
 
-      if (conversation.blockedBy.some((id) => id.equals(payload.receiverId))) {
-        throw new BadRequestException('Conversation blocked');
+      if (
+        conversation.blockedBy.some(
+          (id) => id.equals(senderId) || id.equals(receiverId),
+        )
+      ) {
+        throw new BadRequestException('Conversation is blocked');
       }
 
-      const message = await this.messagesService.create(payload);
+      const messagePayload: CreateMessageDto = {
+        ...payload,
+        senderId: senderId.toString(),
+      };
+
+      const message = await this.messagesService.create(messagePayload);
 
       await this.conversationsService.setLastMessage(
-        new Types.ObjectId(payload.conversationId),
+        conversationId,
         message._id,
       );
 
-      // Check receiver availability
       const receiverOnline = await this.redisStore.isUserOnline(
-        payload.receiverId,
+        receiverId.toString(),
       );
+
       if (!receiverOnline) {
         const missedEvent: MissedEvent = {
           eventName: ChatEvents.RECEIVE_MESSAGE,
@@ -348,40 +364,160 @@ export class ChatGateway
           timestamp: Date.now(),
           conversationId: payload.conversationId,
         };
-        await this.redisStore.storeMissedEvent(payload.receiverId, missedEvent);
+        await this.redisStore.storeMissedEvent(
+          receiverId.toString(),
+          missedEvent,
+        );
+
+        this.server.to(senderId.toString()).emit(ChatEvents.MESSAGE_DELIVERED, {
+          messageId: message._id,
+          conversationId: payload.conversationId,
+        });
       }
 
-      // Cross-instance communication
-      await this.redisStore.publish('chat:message', {
-        event: ChatEvents.RECEIVE_MESSAGE,
-        conversationId: payload.conversationId,
-        receiverId: payload.receiverId,
-        payload: message,
-      });
-
-      // Emit to conversation room
-      this.server
-        .to(payload.conversationId)
-        .emit(ChatEvents.RECEIVE_MESSAGE, message);
-
-      // Update delivery status
       if (receiverOnline) {
+        this.server
+          .to(receiverId.toString())
+          .emit(ChatEvents.RECEIVE_MESSAGE, message);
+
         await this.messagesService.updateStatus(
           message._id,
           MessageStatus.DELIVERED,
         );
-        this.server.to(payload.senderId).emit(ChatEvents.MESSAGE_DELIVERED, {
+
+        this.server.to(senderId.toString()).emit(ChatEvents.MESSAGE_DELIVERED, {
           messageId: message._id,
           conversationId: payload.conversationId,
         });
       }
     } catch (error) {
-      this.logger.error('Message handling error:', error);
-      client.emit('error', {
+      this.logger.error(
+        `Message handling error: ${error.message}`,
+        error.stack,
+      );
+      client.emit(ChatEvents.ERROR, {
         message:
           error instanceof BadRequestException
             ? error.message
             : 'Message send failed',
+      });
+    }
+  }
+
+  @SubscribeMessage(ChatEvents.USER_TYPING)
+  async handleStartTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId: string; receiverId: string },
+  ): Promise<void> {
+    const senderId = this.getUserIdFromSocket(client);
+    if (!senderId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const conversationId = new Types.ObjectId(payload.conversationId);
+      const receiverId = new Types.ObjectId(payload.receiverId);
+
+      // Verify conversation exists and user is a participant
+      const conversation =
+        await this.conversationsService.findOne(conversationId);
+      if (!conversation) {
+        throw new BadRequestException('Conversation not found');
+      }
+
+      if (
+        !conversation.participant1.equals(senderId) &&
+        !conversation.participant2.equals(senderId)
+      ) {
+        throw new BadRequestException('Not a conversation participant');
+      }
+
+      if (
+        conversation.blockedBy.some(
+          (id) => id.equals(senderId) || id.equals(receiverId),
+        )
+      ) {
+        throw new BadRequestException('Conversation is blocked');
+      }
+
+      // Emit typing event to the receiver
+      const receiverOnline = await this.redisStore.isUserOnline(
+        receiverId.toString(),
+      );
+      if (receiverOnline) {
+        this.server.to(receiverId.toString()).emit(ChatEvents.USER_TYPING, {
+          conversationId: payload.conversationId,
+          userId: senderId,
+          isTyping: true,
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Start typing error: ${error.message}`, error.stack);
+      client.emit(ChatEvents.ERROR, {
+        message:
+          error instanceof BadRequestException
+            ? error.message
+            : 'Failed to process typing indicator',
+      });
+    }
+  }
+
+  @SubscribeMessage(ChatEvents.USER_STOP_TYPING)
+  async handleStopTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId: string; receiverId: string },
+  ): Promise<void> {
+    const senderId = this.getUserIdFromSocket(client);
+    if (!senderId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const conversationId = new Types.ObjectId(payload.conversationId);
+      const receiverId = new Types.ObjectId(payload.receiverId);
+
+      // Verify conversation exists and user is a participant
+      const conversation =
+        await this.conversationsService.findOne(conversationId);
+      if (!conversation) {
+        throw new BadRequestException('Conversation not found');
+      }
+
+      if (
+        !conversation.participant1.equals(senderId) &&
+        !conversation.participant2.equals(senderId)
+      ) {
+        throw new BadRequestException('Not a conversation participant');
+      }
+
+      if (
+        conversation.blockedBy.some(
+          (id) => id.equals(senderId) || id.equals(receiverId),
+        )
+      ) {
+        throw new BadRequestException('Conversation is blocked');
+      }
+
+      // Emit stop typing event to the receiver
+      const receiverOnline = await this.redisStore.isUserOnline(
+        receiverId.toString(),
+      );
+      if (receiverOnline) {
+        this.server.to(receiverId.toString()).emit(ChatEvents.USER_TYPING, {
+          conversationId: payload.conversationId,
+          userId: senderId,
+          isTyping: false,
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Stop typing error: ${error.message}`, error.stack);
+      client.emit(ChatEvents.ERROR, {
+        message:
+          error instanceof BadRequestException
+            ? error.message
+            : 'Failed to process typing indicator',
       });
     }
   }

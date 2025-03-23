@@ -9,10 +9,10 @@ export type MessageDocument = HydratedDocument<Message>;
 @Schema({ timestamps: true, autoIndex: true })
 export class Message {
   @Prop({ required: true, type: Types.ObjectId, ref: 'Conversation' })
-  conversation: Types.ObjectId;
+  conversationId: Types.ObjectId;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
-  sender: Types.ObjectId;
+  senderId: Types.ObjectId;
 
   @Prop({
     required: true,
@@ -41,7 +41,7 @@ export class Message {
   status: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Message' })
-  parentMessage?: Types.ObjectId;
+  parentMessageId?: Types.ObjectId;
 
   @Prop({
     type: [

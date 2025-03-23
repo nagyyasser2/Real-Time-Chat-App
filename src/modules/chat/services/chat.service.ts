@@ -116,7 +116,7 @@ export class ChatService {
     emoji: string,
   ): Promise<MessageDocument> {
     const message = await this.messagesService.findOne(messageId);
-    const conversation = await this.conversationsService.findOne(message.conversation);
+    const conversation = await this.conversationsService.findOne(message.conversationId);
     
     if (!this.conversationsService['isParticipant'](conversation, userId)) {
       throw new NotFoundException('User is not authorized to react to this message');
@@ -155,9 +155,9 @@ export class ChatService {
     userId: Types.ObjectId,
   ): Promise<MessageDocument> {
     const message = await this.messagesService.findOne(messageId);
-    const conversation = await this.conversationsService.findOne(message.conversation);
+    const conversation = await this.conversationsService.findOne(message.conversationId);
     
-    if (message.sender !== userId) {
+    if (message.senderId !== userId) {
       throw new NotFoundException('Only the sender can delete this message');
     }
 
@@ -191,7 +191,7 @@ export class ChatService {
       undefined,
       {
         forwarded: true,
-        forwardedFrom: originalMessage.sender,
+        forwardedFrom: originalMessage.senderId,
       }
     );
   }
