@@ -64,7 +64,7 @@ export class User {
     default: [],
   })
   contacts: Array<{
-    userId: Types.ObjectId;
+    user: Types.ObjectId;
     blocked: boolean;
   }>;
 

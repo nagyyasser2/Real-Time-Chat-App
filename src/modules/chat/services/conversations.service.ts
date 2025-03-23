@@ -7,11 +7,13 @@ import {
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { ConversationDocument } from '../schemas/conversation.schema';
 import { FilterQuery, Types } from 'mongoose';
+import { UsersService } from 'src/modules/users/services/users.service';
 
 @Injectable()
 export class ConversationsService {
   constructor(
     private readonly conversationRepository: ConversationRepository,
+    private readonly usersService : UsersService
   ) { }
 
   async create(
@@ -41,9 +43,11 @@ export class ConversationsService {
       if (existingConversation) {
         throw new ConflictException('Conversation already exists between these users');
       }
+      
+      await this.usersService.addContact(participant1Id, participant2Id);
   
       // Create and save the conversation
-      return await this.conversationRepository.create({
+      const newconversation = await this.conversationRepository.create({
         participant1,
         participant2,
         conversationKey, // Ensure uniqueness
@@ -56,6 +60,10 @@ export class ConversationsService {
           [participant2Id, new Date()],
         ]),
       });
+
+
+      return newconversation;
+
     } catch (error) {
       if (error.code === 11000) {
         throw new ConflictException('Conversation already exists between these users');

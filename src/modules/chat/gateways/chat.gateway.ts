@@ -76,7 +76,7 @@ export class ChatGateway
         });
 
         const userId = payload.sub;
-        client.data = { userId };
+        client.data = { userId }
 
         this.redisStore.addUser(userId, client.id);
         await this.handleUserConnect(userId, client);
@@ -94,9 +94,9 @@ export class ChatGateway
   async handleDisconnect(client: Socket): Promise<void> {
     const userId = this.getUserIdFromSocket(client);
     if (userId) {
+      await this.handleUserDisconnect(userId);
       client.leave(userId);
       this.redisStore.removeUser(userId);
-      await this.handleUserDisconnect(userId);
     }
   }
 
@@ -155,8 +155,8 @@ export class ChatGateway
 
     user.contacts?.forEach((contact) => {
       if (!contact.blocked) {
-        if (contact.userId) {
-          client.join(contact.userId.toString());
+        if (contact.user) {
+          client.join(contact?.user?.toString());
         }
       }
     });
@@ -164,7 +164,7 @@ export class ChatGateway
     user.rooms?.forEach((contact) => {
       if (!contact.blocked) {
         if (contact.roomId) {
-          client.join(contact.roomId.toString());
+          client.join(contact?.roomId.toString());
         }
       }
     });
@@ -172,7 +172,7 @@ export class ChatGateway
     user.channels?.forEach((contact) => {
       if (!contact.blocked) {
         if (contact.channelId) {
-          client.join(contact.channelId.toString());
+          client.join(contact?.channelId.toString());
         }
       }
     });
@@ -187,13 +187,13 @@ export class ChatGateway
       const user = await this.usersService.findOne(userId);
       if (!user) return;
 
-      const contacts =
+      const contacts: any =
         user.contacts?.filter((contact) => !contact.blocked) || [];
 
       for (const contact of contacts) {
-        if (contact.userId) {
+        if (contact.user) {
           this.server
-            .to(contact.userId.toString())
+            .to(contact.user?.toString())
             .emit(
               status === 'online'
                 ? ChatEvents.USER_ONLINE
@@ -219,19 +219,21 @@ export class ChatGateway
   ): Promise<void> {
     this.logger.debug('notifyingUserWithOnlineContacts...');
     try {
-      const user = await this.usersService.findOne(userId);
+      const user: any = await this.usersService.findOne(userId);
       if (!user) return;
 
       const onlineContacts: any = [];
       const contacts =
         user.contacts?.filter((contact) => !contact.blocked) || [];
 
+      
       for (const contact of contacts) {
         const isOnline = await this.redisStore.isUserOnline(
-          contact.userId.toString(),
+          contact.user?.toString(),
         );
+      
         if (isOnline) {
-          onlineContacts.push(contact.userId);
+          onlineContacts.push(contact.user?.toString());
         }
       }
 
@@ -249,7 +251,7 @@ export class ChatGateway
     client: Socket,
   ): Promise<void> {
     try {
-      this.logger.verbose(`User connected: ${userId}`);
+      this.logger.debug(`User connected: ${userId}`);
       await this.processMissedEvents(userId);
       await this.joinUserRooms(userId, client);
       await this.notifyContactsWithUserStatus(userId, 'online');
@@ -262,8 +264,8 @@ export class ChatGateway
 
   protected async handleUserDisconnect(userId: string): Promise<void> {
     this.logger.log(`User disconnected: ${userId}`);
-    await this.redisStore.removeUser(userId);
     await this.notifyContactsWithUserStatus(userId, 'offline');
+    await this.redisStore.removeUser(userId);
   }
 
   @SubscribeMessage(ChatEvents.START_CONVERSATION)
@@ -343,7 +345,7 @@ export class ChatGateway
 
       const messagePayload: CreateMessageDto = {
         ...payload,
-        senderId: senderId.toString(),
+        senderId: senderId?.toString(),
       };
 
       const message = await this.messagesService.create(messagePayload);
@@ -354,7 +356,7 @@ export class ChatGateway
       );
 
       const receiverOnline = await this.redisStore.isUserOnline(
-        receiverId.toString(),
+        receiverId?.toString(),
       );
 
       if (!receiverOnline) {
@@ -365,11 +367,11 @@ export class ChatGateway
           conversationId: payload.conversationId,
         };
         await this.redisStore.storeMissedEvent(
-          receiverId.toString(),
+          receiverId?.toString(),
           missedEvent,
         );
 
-        this.server.to(senderId.toString()).emit(ChatEvents.MESSAGE_DELIVERED, {
+        this.server.to(senderId?.toString()).emit(ChatEvents.MESSAGE_DELIVERED, {
           messageId: message._id,
           conversationId: payload.conversationId,
         });
@@ -377,7 +379,7 @@ export class ChatGateway
 
       if (receiverOnline) {
         this.server
-          .to(receiverId.toString())
+          .to(receiverId?.toString())
           .emit(ChatEvents.RECEIVE_MESSAGE, message);
 
         await this.messagesService.updateStatus(
@@ -385,7 +387,7 @@ export class ChatGateway
           MessageStatus.DELIVERED,
         );
 
-        this.server.to(senderId.toString()).emit(ChatEvents.MESSAGE_DELIVERED, {
+        this.server.to(senderId?.toString()).emit(ChatEvents.MESSAGE_DELIVERED, {
           messageId: message._id,
           conversationId: payload.conversationId,
         });
@@ -443,10 +445,10 @@ export class ChatGateway
 
       // Emit typing event to the receiver
       const receiverOnline = await this.redisStore.isUserOnline(
-        receiverId.toString(),
+        receiverId?.toString(),
       );
       if (receiverOnline) {
-        this.server.to(receiverId.toString()).emit(ChatEvents.USER_TYPING, {
+        this.server.to(receiverId?.toString()).emit(ChatEvents.USER_TYPING, {
           conversationId: payload.conversationId,
           userId: senderId,
           isTyping: true,
@@ -502,10 +504,10 @@ export class ChatGateway
 
       // Emit stop typing event to the receiver
       const receiverOnline = await this.redisStore.isUserOnline(
-        receiverId.toString(),
+        receiverId?.toString(),
       );
       if (receiverOnline) {
-        this.server.to(receiverId.toString()).emit(ChatEvents.USER_TYPING, {
+        this.server.to(receiverId?.toString()).emit(ChatEvents.USER_TYPING, {
           conversationId: payload.conversationId,
           userId: senderId,
           isTyping: false,

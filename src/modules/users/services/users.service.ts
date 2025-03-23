@@ -11,7 +11,7 @@ import { Types } from 'mongoose';
 import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from '../enums/profile-photo.enum';
 
-@Injectable()
+@Injectable() 
 export class UsersService {
   constructor(private readonly userRepository: UserRepository) { }
 
@@ -182,5 +182,66 @@ export class UsersService {
 
   async findByUsername(username: string): Promise<User | null> {
     return await this.userRepository.findByUsername(username);
+  }
+
+  async addContact(currentUserId: string, contactUserId: string): Promise<User> {
+    if (!Types.ObjectId.isValid(currentUserId)) {
+      throw new BadRequestException('Invalid current user ID');
+    }
+    if (!Types.ObjectId.isValid(contactUserId)) {
+      throw new BadRequestException('Invalid contact user ID');
+    }
+  
+    const currentUser = await this.userRepository.findUserById(currentUserId);
+    if (!currentUser) {
+      throw new NotFoundException('Current user not found');
+    }
+  
+    const contactUser = await this.userRepository.findUserById(contactUserId);
+    if (!contactUser) {
+      throw new NotFoundException('Contact user not found');
+    }
+  
+    if (currentUserId === contactUserId) {
+      throw new BadRequestException('Cannot add yourself as a contact');
+    }
+  
+    const alreadyAddedToCurrent = currentUser.contacts.some(
+      (contact) => contact.user?.toString() === contactUserId
+    );
+    if (alreadyAddedToCurrent) {
+      throw new BadRequestException('Contact already added to current user');
+    }
+  
+    const alreadyAddedToContact = contactUser.contacts.some(
+      (contact) => contact.user?.toString() === currentUserId
+    );
+    if (alreadyAddedToContact) {
+      throw new BadRequestException('You are already added to the contact user');
+    }
+  
+    // Use the original string IDs directly
+    const newContactForCurrent = { user: contactUserId, blocked: false };
+    const newContactForContact = { user: currentUserId, blocked: false };
+  
+    // Update currentUser's contacts
+    const newContactsForCurrent = [...currentUser.contacts, newContactForCurrent];
+    const updateDataForCurrent = { contacts: newContactsForCurrent };
+  
+    const updatedCurrentUser = await this.userRepository.updateUser(currentUserId, updateDataForCurrent);
+    if (!updatedCurrentUser) {
+      throw new NotFoundException('Current user not found during update');
+    }
+  
+    // Update contactUser's contacts
+    const newContactsForContact = [...contactUser.contacts, newContactForContact];
+    const updateDataForContact = { contacts: newContactsForContact };
+  
+    const updatedContactUser = await this.userRepository.updateUser(contactUserId, updateDataForContact);
+    if (!updatedContactUser) {
+      throw new NotFoundException('Contact user not found during update');
+    }
+  
+    return updatedCurrentUser;
   }
 }
