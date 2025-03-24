@@ -71,8 +71,6 @@ export class ConversationsService {
       throw error;
     }
   }
-  
-  
   async findUserConversations(
     userId: string,
     skip = 0,

@@ -173,7 +173,6 @@ export class ConversationRepository {
     return { data, total };
   }
 
-  // Utility methods
   async isParticipant(
     conversationId: Types.ObjectId,
     userId: Types.ObjectId,
