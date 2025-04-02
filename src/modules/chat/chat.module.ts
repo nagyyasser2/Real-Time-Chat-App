@@ -9,8 +9,9 @@ import { Participant, ParticipantSchema } from './schemas/participant.schema';
 import { MessagesService } from './services/messages.service';
 import { MessageRepository } from './repositories/message.repository';
 import { ChatGateway } from './gateways/chat.gateway';
+import { ChatService } from './services/chat.service';
 import { ChannelsMetadataService } from './services/channels-metadata.service';
-import { ChannelsMetadataRepository } from './repositories/channels-metadata.repository'; // <-- Import the repository
+import { ChannelsMetadataRepository } from './repositories/channels-metadata.repository';
 import { RedisStoreService } from './services/redis-store.service';
 import { ConversationsService } from './services/conversations.service';
 import { UsersService } from '../users/services/users.service';
@@ -35,11 +36,13 @@ import { UsersModule } from '../users/users.module';
     MessagesService,
     MessageRepository,
     ChatGateway,
+    ChatService,
     ChannelsMetadataRepository, 
     ConversationRepository,
     RedisStoreService,
     ConversationsService,
     UsersService,
   ],
+  exports: [ChatService],
 })
 export class ChatModule { }

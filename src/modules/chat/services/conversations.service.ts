@@ -41,7 +41,7 @@ export class ConversationsService {
       // Check if a conversation already exists using the repository method
       const existingConversation = await this.conversationRepository.findOne({ conversationKey });
       if (existingConversation) {
-        throw new ConflictException('Conversation already exists between these users');
+        return existingConversation;
       }
       
       await this.usersService.addContact(participant1Id, participant2Id);
