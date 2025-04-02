@@ -131,4 +131,37 @@ export class ChatGateway
 
     await this.chatService.handleTypingStatus(senderId, payload, false, client);
   }
+
+  @SubscribeMessage(ChatEvents.MESSAGE_READ)
+  async handleMessageRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: { messageId: string; conversationId: string; senderId: string },
+  ): Promise<void> {
+    const userId = this.getUserIdFromSocket(client);
+    if (!userId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
+
+    await this.chatService.markMessageAsRead(userId, payload, client);
+  }
+
+  @SubscribeMessage(ChatEvents.READ_CONVERSATION)
+  async handleConversationRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId: string; senderId: string },
+  ): Promise<void> {
+    const userId = this.getUserIdFromSocket(client);
+    if (!userId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
+
+    await this.chatService.markConversationMessagesAsRead(
+      userId,
+      payload,
+      client,
+    );
+  }
 }

@@ -71,24 +71,23 @@ export class ChatService {
   async joinUserRooms(userId: string, client: Socket): Promise<void> {
     this.logger.debug('joiningUserRooms...');
     client.join(userId);
-  
+
     const user = await this.usersService.findOne(userId);
     if (!user) {
       throw new BadRequestException('User not found');
     }
-  
+
     user.rooms?.forEach((room) => {
       if (!room.blocked && room.roomId) {
         client.join(room.roomId.toString());
       }
     });
-  
+
     user.channels?.forEach((channel) => {
       if (!channel.blocked && channel.channelId) {
         client.join(channel.channelId.toString());
       }
     });
-  
   }
 
   async notifyContactsWithUserStatus(
@@ -289,16 +288,15 @@ export class ChatService {
           MessageStatus.DELIVERED,
         );
       }
-      
+
       client.emit(ChatEvents.MESSAGE_DELIVERED, {
         messageId: message._id,
         conversationId: conversation._id.toString(),
       });
 
       this.server
-      .to(senderId?.toString())
-      .emit(ChatEvents.RECEIVE_MESSAGE, message);
-     
+        .to(senderId?.toString())
+        .emit(ChatEvents.RECEIVE_MESSAGE, message);
     } catch (error) {
       this.logger.error(
         `Message handling error: ${error.message}`,
@@ -363,6 +361,103 @@ export class ChatService {
           error instanceof BadRequestException
             ? error.message
             : 'Failed to process typing indicator',
+      });
+    }
+  }
+
+  async markMessageAsRead(
+    userId: string,
+    payload: { messageId: string; conversationId: string; senderId: string },
+    client: Socket,
+  ): Promise<void> {
+    try {
+      const conversationId = new Types.ObjectId(payload.conversationId);
+      const conversation =
+        await this.conversationsService.findOne(conversationId);
+
+      if (!conversation) {
+        throw new BadRequestException('Conversation not found');
+      }
+
+      const userObjectId = new Types.ObjectId(userId);
+      if (
+        !conversation.participant1.equals(userObjectId) &&
+        !conversation.participant2.equals(userObjectId)
+      ) {
+        throw new BadRequestException('Not a conversation participant');
+      }
+
+      const messageId = new Types.ObjectId(payload.messageId);
+      const updatedMessage = await this.messagesService.markAsRead(messageId);
+
+      if (!updatedMessage) {
+        throw new BadRequestException('Message not found');
+      }
+
+      this.server.to(payload.senderId).emit(ChatEvents.MESSAGE_READ, {
+        messageId: payload.messageId,
+        conversationId: payload.conversationId,
+        readBy: userId,
+        readAt: new Date(),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Mark message as read error: ${error.message}`,
+        error.stack,
+      );
+      client.emit(ChatEvents.ERROR, {
+        message:
+          error instanceof BadRequestException
+            ? error.message
+            : 'Failed to mark message as read',
+      });
+    }
+  }
+
+  async markConversationMessagesAsRead(
+    userId: string,
+    payload: { conversationId: string; senderId: string },
+    client: Socket,
+  ): Promise<void> {
+    try {
+      const conversationId = new Types.ObjectId(payload.conversationId);
+      const conversation =
+        await this.conversationsService.findOne(conversationId);
+
+      if (!conversation) {
+        throw new BadRequestException('Conversation not found');
+      }
+
+      const unreadMessages = await this.messagesService.findMany({
+        conversationId,
+        senderId: new Types.ObjectId(payload.senderId),
+        status: { $ne: MessageStatus.READ },
+      });
+
+      if (unreadMessages.length === 0) {
+        return; 
+      }
+
+      const messageIds = unreadMessages.map((msg) => msg._id);
+
+      await this.messagesService.markMultipleAsRead(messageIds);
+
+      this.server.to(payload.senderId).emit(ChatEvents.MESSAGE_READ, {
+        messageIds: messageIds.map((id) => id.toString()),
+        conversationId: payload.conversationId,
+        readBy: userId,
+        readAt: new Date(),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Mark conversation as read error: ${error.message}`,
+        error.stack,
+      );
+      client.emit(ChatEvents.ERROR, {
+        message:
+          error instanceof BadRequestException
+            ? error.message
+            : 'Failed to mark conversation as read',
       });
     }
   }

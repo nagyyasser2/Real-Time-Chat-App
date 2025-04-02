@@ -14,7 +14,10 @@ import { UpdateMessageDto } from '../dtos/update-message.dto';
 
 @Injectable()
 export class MessagesService {
-  constructor(private readonly messageRepository: MessageRepository) { }
+ async findMany(arg0: { conversationId: Types.ObjectId; senderId: Types.ObjectId; status: { $ne: MessageStatus; }; }) {
+    return await this.messageRepository.findMany(arg0);
+  }
+  constructor(private readonly messageRepository: MessageRepository) {}
 
   async create(createMessageDto: CreateMessageDto): Promise<MessageDocument> {
     const message = await this.messageRepository.create(createMessageDto);
@@ -26,7 +29,11 @@ export class MessagesService {
     skip = 0,
     limit = 20,
   ): Promise<MessageDocument[]> {
-    return this.messageRepository.findByConversation(conversationId, skip, limit);
+    return this.messageRepository.findByConversation(
+      conversationId,
+      skip,
+      limit,
+    );
   }
 
   async findOne(messageId: Types.ObjectId): Promise<MessageDocument> {
@@ -55,7 +62,10 @@ export class MessagesService {
     messageId: Types.ObjectId,
     status: MessageStatus,
   ): Promise<MessageDocument> {
-    const message = await this.messageRepository.updateStatus(messageId, status);
+    const message = await this.messageRepository.updateStatus(
+      messageId,
+      status,
+    );
     if (!message) {
       throw new NotFoundException('Message not found');
     }
@@ -99,9 +109,25 @@ export class MessagesService {
     const date = new Date();
     date.setDate(date.getDate() - days);
 
-    return this.messageRepository.findMessagesByUserAfterDate(
-      userId,
-      date,
+    return this.messageRepository.findMessagesByUserAfterDate(userId, date);
+  }
+
+  async markAsRead(
+    messageId: Types.ObjectId | string,
+  ): Promise<MessageDocument | null> {
+    return this.messageRepository.findByIdAndUpdate(
+      messageId,
+      { status: MessageStatus.READ },
+      { new: true },
+    );
+  }
+
+  async markMultipleAsRead(
+    messageIds: (Types.ObjectId | string)[],
+  ): Promise<void> {
+    await this.messageRepository.updateMany(
+      { _id: { $in: messageIds } },
+      { status: MessageStatus.READ },
     );
   }
 }

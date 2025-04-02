@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-
+import { Model, Types, FilterQuery, UpdateQuery } from 'mongoose';
 
 import { MessageStatus } from '../enums/message-status.enum';
 import { Message, MessageDocument } from '../schemas/message.schema';
@@ -54,6 +53,33 @@ export class MessageRepository {
       .exec();
   }
 
+  async findByIdAndUpdate(
+    messageId: Types.ObjectId | string,
+    update: UpdateQuery<MessageDocument>,
+    options = { new: true }
+  ): Promise<MessageDocument | null> {
+    return this.messageModel
+      .findByIdAndUpdate(messageId, update, options)
+      .exec();
+  }
+
+  async updateMany(
+    filter: FilterQuery<MessageDocument>,
+    update: UpdateQuery<MessageDocument>
+  ): Promise<any> {
+    return this.messageModel
+      .updateMany(filter, update)
+      .exec();
+  }
+
+  async findMany(
+    filter: FilterQuery<MessageDocument>
+  ): Promise<MessageDocument[]> {
+    return this.messageModel
+      .find(filter)
+      .exec();
+  }
+
   async updateStatus(
     messageId: Types.ObjectId,
     status: MessageStatus,
@@ -62,7 +88,7 @@ export class MessageRepository {
       .findByIdAndUpdate(
         messageId,
         { $set: { status } },
-        { new: true }, // Return updated document
+        { new: true }, 
       )
       .exec();
   }
