@@ -45,7 +45,7 @@ export class AuthService {
   }
 
   async refreshTokens(userId: string, refreshToken: string): Promise<Tokens> {
-    const user = await this.usersService.findOne(userId);
+    const user:any = await this.usersService.findOne(userId);
     if (!user || !user.refreshToken)
       throw new UnauthorizedException('Access Denied');
 
@@ -61,7 +61,7 @@ export class AuthService {
     return tokens;
   }
 
-  async validateUser(payload: TokenPayload): Promise<User> {
+  async validateUser(payload: TokenPayload): Promise<any> {
     return this.usersService.findOne(payload.sub);
   }
 
@@ -70,7 +70,7 @@ export class AuthService {
     oldPassword: string,
     newPassword: string,
   ): Promise<void> {
-    const user = await this.usersService.findOne(userId);
+    const user: any = await this.usersService.findOne(userId);
     const passwordMatches = await bcrypt.compare(oldPassword, user.password);
     if (!passwordMatches) throw new UnauthorizedException('Invalid password');
 

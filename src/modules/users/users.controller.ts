@@ -33,10 +33,19 @@ export class UsersController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<User> {
-    return this.usersService.findOne(id);
-  }
+  async findOne(
+    @Param('id') id: string,
+    @Query('fields') fields?: string,
+  ): Promise<Partial<User>> {
+    const projection = fields
+      ? fields.split(',').reduce((acc, field) => {
+          acc[field.trim()] = 1;
+          return acc;
+        }, {} as Record<string, 1>)
+      : undefined;
 
+    return this.usersService.findOne(id, projection);
+  }
   @Patch(':id')
   async update(
     @Param('id') id: string,

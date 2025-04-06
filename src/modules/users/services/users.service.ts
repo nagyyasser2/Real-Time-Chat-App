@@ -15,6 +15,20 @@ import { PhotoVisibility } from '../enums/profile-photo.enum';
 export class UsersService {
   constructor(private readonly userRepository: UserRepository) { }
 
+  async findOne(id: string, projection?: string | Record<string, 1 | 0>): Promise<Partial<User>> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+  
+    const user = await this.userRepository.findUserById(id, projection);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+  
+  
+
   async createUser(createUserDto: CreateUserDto): Promise<User> {
     const { phoneNumber, username, privacySettings } = createUserDto;
 
@@ -41,18 +55,6 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.userRepository.findAll();
-  }
-
-  async findOne(id: string): Promise<User> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException('Invalid user ID');
-    }
-
-    const user = await this.userRepository.findUserById(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    return user;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {

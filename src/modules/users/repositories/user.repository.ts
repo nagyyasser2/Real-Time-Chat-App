@@ -13,9 +13,13 @@ export class UserRepository {
     return this.userModel.create(user);
   }
 
-  async findUserById(userId: any): Promise<UserDocument | null> {
-    return this.userModel.findById(userId).exec();
-  } 
+  async findUserById(
+    userId: any,
+    projection?: any,
+  ): Promise<UserDocument | null> {
+    return this.userModel.findById(userId).select(projection).exec();
+  }
+  
 
   async findByPhoneNumber(phoneNumber: string): Promise<UserDocument | null> {
     return await this.userModel.findOne({ phoneNumber }).exec();
