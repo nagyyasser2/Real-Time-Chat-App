@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { JoinSettings } from '../enums/join-settings.enum';
-import { User } from '../../users/schemas/user.schema';
+import { User } from '../../users/user.schema';
 
 export type GroupsMetadataDocument = HydratedDocument<GroupsMetadata>;
 

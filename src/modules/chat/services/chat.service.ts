@@ -4,7 +4,7 @@ import { Socket } from 'socket.io';
 import { RedisStoreService } from './redis-store.service';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
-import { UsersService } from '../../users/services/users.service';
+import { UsersService } from '../../users/users.service';
 import { ChatEvents } from '../chat.events';
 import { CreateConversationDto } from '../dtos/create-conversation.dto';
 import { SendMessageDto } from '../dtos/send-message.dto';

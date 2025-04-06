@@ -11,16 +11,16 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { UsersService } from './services/users.service';
+import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './schemas/user.schema';
+import { User } from './user.schema';
 import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from './enums/profile-photo.enum';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto): Promise<User> {
@@ -32,20 +32,49 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get('search')
+  async searchUsers(
+    @Query('q') q: string,
+    @Query('field') field: 'username' | 'phoneNumber' | 'country', // Restrict to valid fields
+    @Query('fields') fields?: string, // Optional projection fields
+  ): Promise<Partial<User>[]> {
+    if (!q) {
+      throw new BadRequestException('Search query (q) is required');
+    }
+    if (!field || !['username', 'phoneNumber', 'country'].includes(field)) {
+      throw new BadRequestException('Invalid field');
+    }
+  
+    // Create projection object for selecting specific fields (optional)
+    const projection: Record<string, 1> | undefined = fields
+      ? fields.split(',').reduce((acc, field) => {
+          acc[field.trim()] = 1;
+          return acc;
+        }, {} as Record<string, 1>)
+      : undefined;
+  
+    return this.usersService.searchUsers(q, field, projection);
+  }
+
+
   @Get(':id')
   async findOne(
     @Param('id') id: string,
     @Query('fields') fields?: string,
   ): Promise<Partial<User>> {
     const projection = fields
-      ? fields.split(',').reduce((acc, field) => {
-          acc[field.trim()] = 1;
-          return acc;
-        }, {} as Record<string, 1>)
+      ? fields.split(',').reduce(
+          (acc, field) => {
+            acc[field.trim()] = 1;
+            return acc;
+          },
+          {} as Record<string, 1>,
+        )
       : undefined;
 
     return this.usersService.findOne(id, projection);
   }
+
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -107,18 +136,6 @@ export class UsersController {
       throw new BadRequestException('Phone number is required');
     }
     const user = await this.usersService.findByPhoneNumber(phoneNumber);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    return user;
-  }
-
-  @Get('search/username')
-  async findByUsername(@Query('username') username: string): Promise<User> {
-    if (!username) {
-      throw new BadRequestException('Username is required');
-    }
-    const user = await this.usersService.findByUsername(username);
     if (!user) {
       throw new NotFoundException('User not found');
     }

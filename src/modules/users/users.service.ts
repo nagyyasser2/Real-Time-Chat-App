@@ -3,13 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
-import { UserRepository } from '../repositories/user.repository';
-import { User } from '../schemas/user.schema';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UserRepository } from './user.repository';
+import { User } from './user.schema';
 import { Types } from 'mongoose';
-import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
-import { PhotoVisibility } from '../enums/profile-photo.enum';
+import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
+import { PhotoVisibility } from './enums/profile-photo.enum';
 
 @Injectable() 
 export class UsersService {
@@ -25,6 +25,14 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
     return user;
+  }
+  
+  async searchUsers(
+    query: string,
+    field: 'username' | 'phoneNumber' | 'country', // Restrict the field to valid options
+    projection?: Record<string, 1>,
+  ): Promise<Partial<User>[]> {
+    return this.userRepository.searchUsers(query, field, projection);
   }
   
   

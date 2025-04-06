@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { LastSeenVisibility } from '../enums/lastSeenVisibility.enum';
-import { PhotoVisibility } from '../enums/profile-photo.enum';
-import { Country } from '../enums/countries.enum';
+import { Country } from './enums/countries.enum';
+import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
+import { PhotoVisibility } from './enums/profile-photo.enum';
+
 
 export type UserDocument = HydratedDocument<User>;
 

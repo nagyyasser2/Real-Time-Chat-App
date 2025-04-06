@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
-import { User } from 'src/modules/users/schemas/user.schema';
+import { User } from 'src/modules/users/user.schema';
 
 interface CustomRequest extends Request {
     user?: User;

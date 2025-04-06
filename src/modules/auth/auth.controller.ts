@@ -17,7 +17,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/auth.guard'
 import { Tokens } from './interfaces/auth.interface';
-import { User } from '../users/schemas/user.schema';
+import { User } from '../users/user.schema';
 
 @Controller('auth')
 export class AuthController {

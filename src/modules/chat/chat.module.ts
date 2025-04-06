@@ -14,7 +14,7 @@ import { ChannelsMetadataService } from './services/channels-metadata.service';
 import { ChannelsMetadataRepository } from './repositories/channels-metadata.repository';
 import { RedisStoreService } from './services/redis-store.service';
 import { ConversationsService } from './services/conversations.service';
-import { UsersService } from '../users/services/users.service';
+import { UsersService } from '../users/users.service';
 import { ConversationRepository } from './repositories/conversation.repository';
 import { UsersModule } from '../users/users.module';
 

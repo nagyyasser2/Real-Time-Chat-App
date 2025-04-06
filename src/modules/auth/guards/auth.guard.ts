@@ -8,7 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { IConfig } from '../../../config/interfaces/config.interface';
-import { UsersService } from '../../users/services/users.service';
+import { UsersService } from '../../users/users.service';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {

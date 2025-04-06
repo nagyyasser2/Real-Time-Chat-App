@@ -7,7 +7,7 @@ import {
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { ConversationDocument } from '../schemas/conversation.schema';
 import { FilterQuery, Types } from 'mongoose';
-import { UsersService } from 'src/modules/users/services/users.service';
+import { UsersService } from 'src/modules/users/users.service';
 import { MessagesService } from './messages.service';
 
 @Injectable()
