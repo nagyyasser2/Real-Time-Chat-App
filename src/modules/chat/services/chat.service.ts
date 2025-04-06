@@ -5,7 +5,7 @@ import { RedisStoreService } from './redis-store.service';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
 import { UsersService } from '../../users/services/users.service';
-import { ChatEvents } from '../events/chat.events';
+import { ChatEvents } from '../chat.events';
 import { CreateConversationDto } from '../dtos/create-conversation.dto';
 import { SendMessageDto } from '../dtos/send-message.dto';
 import { MissedEvent } from '../interfaces/missed-event.interface';
@@ -29,7 +29,7 @@ export class ChatService {
     this.server = server;
   }
 
-  async processMissedEvents(userId: string): Promise<void> {
+  async processMissedEvents(userId: string, client?: Socket): Promise<void> {
     this.logger.debug(`Processing missed events for user: ${userId}...`);
 
     const missedEvents = (await this.redisStore.getMissedEvents(userId)) || [];
@@ -39,29 +39,28 @@ export class ChatService {
       return;
     }
 
+    this.logger.debug(`Missed events data:`, missedEvents);
+
+    // Sort events by timestamp to process them in chronological order
     missedEvents.sort((a, b) => a.timestamp - b.timestamp);
 
     this.logger.debug(
       `Found ${missedEvents.length} missed events for user: ${userId}`,
     );
 
-    await this.server
-      .in(userId)
-      .fetchSockets()
-      .then(async (sockets) => {
-        if (sockets.length === 0) {
-          this.logger.warn(`User ${userId} is not in a room. Joining now...`);
-          this.server.socketsJoin(userId);
-        }
-      });
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
     for (const event of missedEvents) {
       this.logger.debug(
         `Sending missed event to ${userId}: ${event.eventName}`,
       );
-      this.server.to(userId).emit(event.eventName, event.payload);
+
+      // If client socket is provided, emit directly to it
+      // This ensures the event reaches the client even if room joining is delayed
+      if (client) {
+        client.emit(event.eventName, event.payload);
+      } else {
+        // Fall back to room-based emission if no specific client is provided
+        this.server.to(userId).emit(event.eventName, event.payload);
+      }
     }
 
     await this.redisStore.clearMissedEvents(userId);
@@ -73,6 +72,7 @@ export class ChatService {
     client.join(userId);
 
     const user = await this.usersService.findOne(userId);
+
     if (!user) {
       throw new BadRequestException('User not found');
     }
@@ -160,8 +160,8 @@ export class ChatService {
   async handleUserConnect(userId: string, client: Socket): Promise<void> {
     try {
       this.logger.debug(`User connected: ${userId}`);
-      await this.processMissedEvents(userId);
-      await this.joinUserRooms(userId, client);
+      await this.joinUserRooms(userId, client); // Join rooms FIRST
+      await this.processMissedEvents(userId); // THEN process missed events
       await this.notifyContactsWithUserStatus(userId, 'online');
       await this.notifyUserWithOnlineContacts(userId, client);
     } catch (error) {
@@ -272,6 +272,7 @@ export class ChatService {
           timestamp: Date.now(),
           conversationId: conversation._id.toString(),
         };
+
         await this.redisStore.storeMissedEvent(
           receiverId?.toString(),
           missedEvent,
@@ -288,11 +289,6 @@ export class ChatService {
           MessageStatus.DELIVERED,
         );
       }
-
-      client.emit(ChatEvents.MESSAGE_DELIVERED, {
-        messageId: message._id,
-        conversationId: conversation._id.toString(),
-      });
 
       this.server
         .to(senderId?.toString())
@@ -365,55 +361,6 @@ export class ChatService {
     }
   }
 
-  async markMessageAsRead(
-    userId: string,
-    payload: { messageId: string; conversationId: string; senderId: string },
-    client: Socket,
-  ): Promise<void> {
-    try {
-      const conversationId = new Types.ObjectId(payload.conversationId);
-      const conversation =
-        await this.conversationsService.findOne(conversationId);
-
-      if (!conversation) {
-        throw new BadRequestException('Conversation not found');
-      }
-
-      const userObjectId = new Types.ObjectId(userId);
-      if (
-        !conversation.participant1.equals(userObjectId) &&
-        !conversation.participant2.equals(userObjectId)
-      ) {
-        throw new BadRequestException('Not a conversation participant');
-      }
-
-      const messageId = new Types.ObjectId(payload.messageId);
-      const updatedMessage = await this.messagesService.markAsRead(messageId);
-
-      if (!updatedMessage) {
-        throw new BadRequestException('Message not found');
-      }
-
-      this.server.to(payload.senderId).emit(ChatEvents.MESSAGE_READ, {
-        messageId: payload.messageId,
-        conversationId: payload.conversationId,
-        readBy: userId,
-        readAt: new Date(),
-      });
-    } catch (error) {
-      this.logger.error(
-        `Mark message as read error: ${error.message}`,
-        error.stack,
-      );
-      client.emit(ChatEvents.ERROR, {
-        message:
-          error instanceof BadRequestException
-            ? error.message
-            : 'Failed to mark message as read',
-      });
-    }
-  }
-
   async markConversationMessagesAsRead(
     userId: string,
     payload: { conversationId: string; senderId: string },
@@ -429,25 +376,41 @@ export class ChatService {
       }
 
       const unreadMessages = await this.messagesService.findMany({
-        conversationId,
-        senderId: new Types.ObjectId(payload.senderId),
-        status: { $ne: MessageStatus.READ },
+        status: { $in: ['delivered', 'sent'] },
+        conversationId: payload.conversationId,
       });
 
       if (unreadMessages.length === 0) {
-        return; 
+        return;
       }
 
       const messageIds = unreadMessages.map((msg) => msg._id);
 
       await this.messagesService.markMultipleAsRead(messageIds);
 
-      this.server.to(payload.senderId).emit(ChatEvents.MESSAGE_READ, {
+      const readPayload = {
         messageIds: messageIds.map((id) => id.toString()),
         conversationId: payload.conversationId,
         readBy: userId,
         readAt: new Date(),
-      });
+      };
+
+      const senderOnline = await this.redisStore.isUserOnline(payload.senderId);
+
+      if (!senderOnline) {
+        const missedEvent: MissedEvent = {
+          eventName: ChatEvents.READ_CONVERSATION,
+          payload: readPayload,
+          timestamp: Date.now(),
+          conversationId: payload.conversationId,
+        };
+
+        await this.redisStore.storeMissedEvent(payload.senderId, missedEvent);
+      } else {
+        this.server
+          .to(payload.senderId)
+          .emit(ChatEvents.READ_CONVERSATION, readPayload);
+      }
     } catch (error) {
       this.logger.error(
         `Mark conversation as read error: ${error.message}`,

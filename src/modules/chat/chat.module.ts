@@ -8,7 +8,7 @@ import { Message, MessageSchema } from './schemas/message.schema';
 import { Participant, ParticipantSchema } from './schemas/participant.schema';
 import { MessagesService } from './services/messages.service';
 import { MessageRepository } from './repositories/message.repository';
-import { ChatGateway } from './gateways/chat.gateway';
+import { ChatGateway } from './chat.gateway';
 import { ChatService } from './services/chat.service';
 import { ChannelsMetadataService } from './services/channels-metadata.service';
 import { ChannelsMetadataRepository } from './repositories/channels-metadata.repository';
@@ -16,7 +16,6 @@ import { RedisStoreService } from './services/redis-store.service';
 import { ConversationsService } from './services/conversations.service';
 import { UsersService } from '../users/services/users.service';
 import { ConversationRepository } from './repositories/conversation.repository';
-import { UserRepository } from '../users/repositories/user.repository';
 import { UsersModule } from '../users/users.module';
 
 @Module({

@@ -37,7 +37,7 @@ export class User {
   @Prop({
     type: {
       lastSeenVisibility: {
-        type: String,
+        type: String, 
         enum: LastSeenVisibility,
         default: LastSeenVisibility.Everyone,
       },

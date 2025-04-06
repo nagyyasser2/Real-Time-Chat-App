@@ -14,7 +14,7 @@ import { UpdateMessageDto } from '../dtos/update-message.dto';
 
 @Injectable()
 export class MessagesService {
- async findMany(arg0: { conversationId: Types.ObjectId; senderId: Types.ObjectId; status: { $ne: MessageStatus; }; }) {
+ async findMany(arg0: any) {
     return await this.messageRepository.findMany(arg0);
   }
   constructor(private readonly messageRepository: MessageRepository) {}
@@ -80,6 +80,10 @@ export class MessagesService {
     return deletedMessage;
   }
 
+  async removeMessagesByConversation(conversationId: Types.ObjectId): Promise<void> {
+    await this.messageRepository.deleteMany(conversationId);
+  }
+    
   async addReaction(
     messageId: Types.ObjectId,
     userId: Types.ObjectId,

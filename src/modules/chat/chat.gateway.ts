@@ -12,11 +12,11 @@ import { Server, Socket } from 'socket.io';
 import { Logger, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { RedisStoreService } from '../services/redis-store.service';
-import { ChatEvents } from '../events/chat.events';
-import { CreateConversationDto } from '../dtos/create-conversation.dto';
-import { SendMessageDto } from '../dtos/send-message.dto';
-import { ChatService } from '../services/chat.service';
+import { RedisStoreService } from './services/redis-store.service';
+import { ChatEvents } from './chat.events';
+import { CreateConversationDto } from './dtos/create-conversation.dto';
+import { SendMessageDto } from './dtos/send-message.dto';
+import { ChatService } from './services/chat.service';
 
 @WebSocketGateway({
   cors: {
@@ -130,21 +130,6 @@ export class ChatGateway
     }
 
     await this.chatService.handleTypingStatus(senderId, payload, false, client);
-  }
-
-  @SubscribeMessage(ChatEvents.MESSAGE_READ)
-  async handleMessageRead(
-    @ConnectedSocket() client: Socket,
-    @MessageBody()
-    payload: { messageId: string; conversationId: string; senderId: string },
-  ): Promise<void> {
-    const userId = this.getUserIdFromSocket(client);
-    if (!userId) {
-      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
-      return;
-    }
-
-    await this.chatService.markMessageAsRead(userId, payload, client);
   }
 
   @SubscribeMessage(ChatEvents.READ_CONVERSATION)

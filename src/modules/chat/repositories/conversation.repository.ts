@@ -10,12 +10,10 @@ export class ConversationRepository {
     private readonly conversationModel: Model<ConversationDocument>,
   ) { }
 
-  // Create
   async create(conversation: Partial<Conversation>): Promise<ConversationDocument> {
     return this.conversationModel.create(conversation);
   }
 
-  // Read
   async findById(
     id: Types.ObjectId,
     projection?: ProjectionType<Conversation>,
@@ -56,7 +54,6 @@ export class ConversationRepository {
       .exec();
   }
 
-  // Update
   async updateById(
     id: Types.ObjectId,
     update: Partial<Conversation>,
@@ -153,7 +150,6 @@ export class ConversationRepository {
       .exec();
   }
 
-  // Pagination support
   async findAllPaginated(
     filter: FilterQuery<Conversation>,
     skip: number,

@@ -8,12 +8,14 @@ import { ConversationRepository } from '../repositories/conversation.repository'
 import { ConversationDocument } from '../schemas/conversation.schema';
 import { FilterQuery, Types } from 'mongoose';
 import { UsersService } from 'src/modules/users/services/users.service';
+import { MessagesService } from './messages.service';
 
 @Injectable()
 export class ConversationsService {
   constructor(
     private readonly conversationRepository: ConversationRepository,
-    private readonly usersService : UsersService
+    private readonly usersService : UsersService,
+    private readonly messagesService: MessagesService
   ) { }
 
   async create(

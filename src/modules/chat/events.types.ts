@@ -1,3 +1,3 @@
-import { EVENTS } from '../constants/events.constant';
+import { EVENTS } from './events.constant';
 
 export type EventName = typeof EVENTS[keyof typeof EVENTS][keyof typeof EVENTS[keyof typeof EVENTS]];

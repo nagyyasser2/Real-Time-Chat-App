@@ -15,7 +15,7 @@ export class UserRepository {
 
   async findUserById(userId: any): Promise<UserDocument | null> {
     return this.userModel.findById(userId).exec();
-  }
+  } 
 
   async findByPhoneNumber(phoneNumber: string): Promise<UserDocument | null> {
     return await this.userModel.findOne({ phoneNumber }).exec();

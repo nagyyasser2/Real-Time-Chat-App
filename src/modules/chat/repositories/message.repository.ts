@@ -5,13 +5,13 @@ import { Model, Types, FilterQuery, UpdateQuery } from 'mongoose';
 import { MessageStatus } from '../enums/message-status.enum';
 import { Message, MessageDocument } from '../schemas/message.schema';
 import { CreateMessageDto } from '../dtos/create-message.dto';
- 
+
 @Injectable()
 export class MessageRepository {
   constructor(
     @InjectModel(Message.name)
     private readonly messageModel: Model<MessageDocument>,
-  ) { }
+  ) {}
 
   async create(messageData: CreateMessageDto): Promise<MessageDocument> {
     return this.messageModel.create(messageData);
@@ -56,7 +56,7 @@ export class MessageRepository {
   async findByIdAndUpdate(
     messageId: Types.ObjectId | string,
     update: UpdateQuery<MessageDocument>,
-    options = { new: true }
+    options = { new: true },
   ): Promise<MessageDocument | null> {
     return this.messageModel
       .findByIdAndUpdate(messageId, update, options)
@@ -65,19 +65,15 @@ export class MessageRepository {
 
   async updateMany(
     filter: FilterQuery<MessageDocument>,
-    update: UpdateQuery<MessageDocument>
+    update: UpdateQuery<MessageDocument>,
   ): Promise<any> {
-    return this.messageModel
-      .updateMany(filter, update)
-      .exec();
+    return this.messageModel.updateMany(filter, update).exec();
   }
 
   async findMany(
-    filter: FilterQuery<MessageDocument>
+    filter: FilterQuery<MessageDocument>,
   ): Promise<MessageDocument[]> {
-    return this.messageModel
-      .find(filter)
-      .exec();
+    return this.messageModel.find(filter).exec();
   }
 
   async updateStatus(
@@ -85,22 +81,16 @@ export class MessageRepository {
     status: MessageStatus,
   ): Promise<MessageDocument | null> {
     return this.messageModel
-      .findByIdAndUpdate(
-        messageId,
-        { $set: { status } },
-        { new: true }, 
-      )
+      .findByIdAndUpdate(messageId, { $set: { status } }, { new: true })
       .exec();
   }
 
   async delete(messageId: Types.ObjectId): Promise<MessageDocument | null> {
-    return this.messageModel
-      .findByIdAndUpdate(
-        messageId,
-        { $set: { isDeleted: true } },
-        { new: true },
-      )
-      .exec();
+    return this.messageModel.findByIdAndDelete(messageId).exec();
+  }
+
+  async deleteMany(conversationId: Types.ObjectId): Promise<void> {
+    await this.messageModel.deleteMany({ conversationId }).exec();
   }
 
   async addReaction(
