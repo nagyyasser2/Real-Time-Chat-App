@@ -39,7 +39,7 @@ export class ChatService {
       return;
     }
 
-    this.logger.debug(`Missed events data:`, missedEvents);
+    // this.logger.debug(`Missed events data:`, missedEvents);
 
     // Sort events by timestamp to process them in chronological order
     missedEvents.sort((a, b) => a.timestamp - b.timestamp);

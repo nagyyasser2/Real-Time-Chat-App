@@ -56,7 +56,6 @@ export class UsersController {
     return this.usersService.searchUsers(q, field, projection);
   }
 
-
   @Get(':id')
   async findOne(
     @Param('id') id: string,
