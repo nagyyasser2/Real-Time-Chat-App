@@ -4,7 +4,6 @@ import { Country } from './enums/countries.enum';
 import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from './enums/profile-photo.enum';
 
-
 export type UserDocument = HydratedDocument<User>;
 
 @Schema({ timestamps: true, autoIndex: true })
@@ -38,7 +37,7 @@ export class User {
   @Prop({
     type: {
       lastSeenVisibility: {
-        type: String, 
+        type: String,
         enum: LastSeenVisibility,
         default: LastSeenVisibility.Everyone,
       },
@@ -60,6 +59,7 @@ export class User {
       {
         user: { type: Types.ObjectId, ref: 'User' },
         blocked: { type: Boolean, default: false },
+        removedByContact: { type: Boolean, default: false }, // New field
       },
     ],
     default: [],
@@ -67,6 +67,7 @@ export class User {
   contacts: Array<{
     user: Types.ObjectId;
     blocked: boolean;
+    removedByContact: boolean; // New field to track if this contact removed the user
   }>;
 
   @Prop({

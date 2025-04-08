@@ -94,18 +94,19 @@ export class ChatService {
     userId: string,
     status: 'online' | 'offline',
   ): Promise<void> {
-    this.logger.debug('notifyingContactsWithUserStauts....');
+    this.logger.debug('notifyingContactsWithUserStatus....');
     try {
       const user = await this.usersService.findOne(userId);
       if (!user) return;
-
+  
+      // Only notify contacts who haven't removed the user AND aren't blocked
       const contacts: any =
-        user.contacts?.filter((contact) => !contact.blocked) || [];
-
+        user.contacts?.filter((contact) => !contact.blocked && !contact.removedByContact) || [];
+  
       for (const contact of contacts) {
         if (contact.user) {
           this.server
-            .to(contact.user?.toString())
+            .to(contact.user?.toString()) 
             .emit(
               status === 'online'
                 ? ChatEvents.USER_ONLINE

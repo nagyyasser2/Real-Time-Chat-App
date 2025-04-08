@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -11,22 +12,27 @@ import { Types } from 'mongoose';
 import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from './enums/profile-photo.enum';
 
-@Injectable() 
+@Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) { }
+  constructor(private readonly userRepository: UserRepository) {}
 
-  async findOne(id: string, projection?: string | Record<string, 1 | 0>): Promise<Partial<User>> {
+   private readonly logger = new Logger(UsersService.name);
+
+  async findOne(
+    id: string,
+    projection?: string | Record<string, 1 | 0>,
+  ): Promise<Partial<User>> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid user ID');
     }
-  
+
     const user = await this.userRepository.findUserById(id, projection);
     if (!user) {
       throw new NotFoundException('User not found');
     }
     return user;
   }
-  
+
   async searchUsers(
     query: string,
     field: 'username' | 'phoneNumber' | 'country', // Restrict the field to valid options
@@ -100,11 +106,11 @@ export class UsersService {
       ...updateUserDto,
       privacySettings: updateUserDto.privacySettings
         ? {
-          lastSeenVisibility:
-            updateUserDto.privacySettings.lastSeenVisibility,
-          profilePhotoVisibility:
-            updateUserDto.privacySettings.profilePhotoVisibility,
-        }
+            lastSeenVisibility:
+              updateUserDto.privacySettings.lastSeenVisibility,
+            profilePhotoVisibility:
+              updateUserDto.privacySettings.profilePhotoVisibility,
+          }
         : undefined,
     };
 
@@ -191,62 +197,96 @@ export class UsersService {
   async findByUsername(username: string): Promise<User | null> {
     return await this.userRepository.findByUsername(username);
   }
-  
-  async addContact(currentUserId: string, contactUserId: string): Promise<User> {
+
+  async addContact(
+    currentUserId: string,
+    contactUserId: string,
+  ): Promise<User> {
     if (!Types.ObjectId.isValid(currentUserId)) {
       throw new BadRequestException('Invalid current user ID');
     }
     if (!Types.ObjectId.isValid(contactUserId)) {
       throw new BadRequestException('Invalid contact user ID');
     }
-  
+
     if (currentUserId === contactUserId) {
       throw new BadRequestException('Cannot add yourself as a contact');
     }
-  
+
     const currentUser = await this.userRepository.findUserById(currentUserId);
     if (!currentUser) {
       throw new NotFoundException('Current user not found');
     }
-  
+
     const contactUser = await this.userRepository.findUserById(contactUserId);
     if (!contactUser) {
       throw new NotFoundException('Contact user not found');
     }
-  
+
     const alreadyAddedToCurrent = currentUser.contacts.some(
-      (contact) => contact.user?.toString() === contactUserId
+      (contact) => contact.user?.toString() === contactUserId,
     );
-    const alreadyAddedToContact = contactUser.contacts.some(
-      (contact) => contact.user?.toString() === currentUserId
+
+    // Check if contact user exists in contact's list
+    const contactUserContactIndex = contactUser.contacts.findIndex(
+      (contact) => contact.user?.toString() === currentUserId,
     );
-  
-    if (alreadyAddedToCurrent && alreadyAddedToContact) {
+    const contactHasCurrentUser = contactUserContactIndex !== -1;
+
+    // If both users already have each other in contacts, just make sure removedByContact is reset
+    if (alreadyAddedToCurrent && contactHasCurrentUser) {
+      // Reset the removedByContact flag if it was set
+      if (contactUser.contacts[contactUserContactIndex].removedByContact) {
+        const updatedContactsForContact = [...contactUser.contacts];
+        updatedContactsForContact[contactUserContactIndex].removedByContact =
+          false;
+
+        await this.userRepository.updateUser(contactUserId, {
+          contacts: updatedContactsForContact,
+        });
+      }
       return currentUser;
     }
-  
+
+    // Add or update contacts as needed
     const updatedContactsForCurrent = alreadyAddedToCurrent
       ? [...currentUser.contacts]
-      : [...currentUser.contacts, { user: contactUserId, blocked: false }];
-  
-    const updatedContactsForContact = alreadyAddedToContact
-      ? [...contactUser.contacts]
-      : [...contactUser.contacts, { user: currentUserId, blocked: false }];
-  
-    const updatedCurrentUser = await this.userRepository.updateUser(currentUserId, {
-      contacts: updatedContactsForCurrent,
-    });
+      : [
+          ...currentUser.contacts,
+          { user: contactUserId, blocked: false, removedByContact: false },
+        ];
+
+    // If the contact user already has current user, update to reset removedByContact flag
+    let updatedContactsForContact;
+    if (contactHasCurrentUser) {
+      updatedContactsForContact = [...contactUser.contacts];
+      updatedContactsForContact[contactUserContactIndex].removedByContact =
+        false;
+    } else {
+      // Otherwise add the current user to the contact's list
+      updatedContactsForContact = [
+        ...contactUser.contacts,
+        { user: currentUserId, blocked: false, removedByContact: false },
+      ];
+    }
+
+    const updatedCurrentUser = await this.userRepository.updateUser(
+      currentUserId,
+      {
+        contacts: updatedContactsForCurrent,
+      },
+    );
     if (!updatedCurrentUser) {
       throw new NotFoundException('Current user not found during update');
     }
-  
+
     await this.userRepository.updateUser(contactUserId, {
       contacts: updatedContactsForContact,
     });
-  
+
     return updatedCurrentUser;
   }
-  
+
   async removeContact(currentUserId: string, contactUserId: string): Promise<User> {
     if (!Types.ObjectId.isValid(currentUserId)) {
       throw new BadRequestException('Invalid current user ID');
@@ -279,16 +319,40 @@ export class UsersService {
     const contactIndexInContact = contactUser.contacts.findIndex(
       (contact) => contact.user?.toString() === currentUserId
     );
-   
-
+  
+    // Remove the contact from current user's contacts
     const updatedContactsForCurrent = [...currentUser.contacts];
     updatedContactsForCurrent.splice(contactIndexInCurrent, 1);
     const updateDataForCurrent = { contacts: updatedContactsForCurrent };
-
+  
+    // Mark the contact as removed in the other user's contacts list if they have current user in contacts
+    if (contactIndexInContact !== -1) {
+      // Create a deep copy to avoid reference issues
+      const updatedContactsForContact = JSON.parse(JSON.stringify(contactUser.contacts));
+      
+      // Set the removedByContact flag to true
+      updatedContactsForContact[contactIndexInContact].removedByContact = true;
+      
+      this.logger.debug(`Marking user ${currentUserId} as removed in contact ${contactUserId}'s list`);
+      
+      // Explicitly await this update to ensure it completes
+      const updateResult = await this.userRepository.updateUser(contactUserId, {
+        contacts: updatedContactsForContact
+      });
+      
+      // Log the result for debugging
+      if (!updateResult) {
+        this.logger.error(`Failed to update removedByContact flag for user ${contactUserId}`);
+      } else {
+        this.logger.debug(`Successfully updated removedByContact flag for user ${contactUserId}`);
+      }
+    }
+  
     const updatedCurrentUser = await this.userRepository.updateUser(
       currentUserId,
       updateDataForCurrent
     );
+    
     if (!updatedCurrentUser) {
       throw new NotFoundException('Current user not found during update');
     }
