@@ -10,6 +10,7 @@ import {
   Put,
   NotFoundException,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -17,6 +18,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.schema';
 import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from './enums/profile-photo.enum';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -44,15 +47,18 @@ export class UsersController {
     if (!field || !['username', 'phoneNumber', 'country'].includes(field)) {
       throw new BadRequestException('Invalid field');
     }
-  
+
     // Create projection object for selecting specific fields (optional)
     const projection: Record<string, 1> | undefined = fields
-      ? fields.split(',').reduce((acc, field) => {
-          acc[field.trim()] = 1;
-          return acc;
-        }, {} as Record<string, 1>)
+      ? fields.split(',').reduce(
+          (acc, field) => {
+            acc[field.trim()] = 1;
+            return acc;
+          },
+          {} as Record<string, 1>,
+        )
       : undefined;
-  
+
     return this.usersService.searchUsers(q, field, projection);
   }
 
@@ -72,6 +78,12 @@ export class UsersController {
       : undefined;
 
     return this.usersService.findOne(id, projection);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async removeContact(@Param('id') id: string, @CurrentUser() user) {
+    await this.usersService.removeContact(user._id, id);
   }
 
   @Patch(':id')

@@ -34,8 +34,6 @@ export class UsersService {
   ): Promise<Partial<User>[]> {
     return this.userRepository.searchUsers(query, field, projection);
   }
-  
-  
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {
     const { phoneNumber, username, privacySettings } = createUserDto;
@@ -193,13 +191,17 @@ export class UsersService {
   async findByUsername(username: string): Promise<User | null> {
     return await this.userRepository.findByUsername(username);
   }
-
+  
   async addContact(currentUserId: string, contactUserId: string): Promise<User> {
     if (!Types.ObjectId.isValid(currentUserId)) {
       throw new BadRequestException('Invalid current user ID');
     }
     if (!Types.ObjectId.isValid(contactUserId)) {
       throw new BadRequestException('Invalid contact user ID');
+    }
+  
+    if (currentUserId === contactUserId) {
+      throw new BadRequestException('Cannot add yourself as a contact');
     }
   
     const currentUser = await this.userRepository.findUserById(currentUserId);
@@ -212,50 +214,39 @@ export class UsersService {
       throw new NotFoundException('Contact user not found');
     }
   
-    if (currentUserId === contactUserId) {
-      throw new BadRequestException('Cannot add yourself as a contact');
-    }
-  
     const alreadyAddedToCurrent = currentUser.contacts.some(
       (contact) => contact.user?.toString() === contactUserId
     );
-  
     const alreadyAddedToContact = contactUser.contacts.some(
       (contact) => contact.user?.toString() === currentUserId
     );
   
-    // If already added on both sides, just return the current user
     if (alreadyAddedToCurrent && alreadyAddedToContact) {
       return currentUser;
     }
   
-    // Use the original string IDs directly
-    const newContactsForCurrent = alreadyAddedToCurrent
-      ? currentUser.contacts
+    const updatedContactsForCurrent = alreadyAddedToCurrent
+      ? [...currentUser.contacts]
       : [...currentUser.contacts, { user: contactUserId, blocked: false }];
-    const newContactsForContact = alreadyAddedToContact
-      ? contactUser.contacts
+  
+    const updatedContactsForContact = alreadyAddedToContact
+      ? [...contactUser.contacts]
       : [...contactUser.contacts, { user: currentUserId, blocked: false }];
   
-    // Update both users
     const updatedCurrentUser = await this.userRepository.updateUser(currentUserId, {
-      contacts: newContactsForCurrent,
+      contacts: updatedContactsForCurrent,
     });
     if (!updatedCurrentUser) {
       throw new NotFoundException('Current user not found during update');
     }
   
-    const updatedContactUser = await this.userRepository.updateUser(contactUserId, {
-      contacts: newContactsForContact,
+    await this.userRepository.updateUser(contactUserId, {
+      contacts: updatedContactsForContact,
     });
-    if (!updatedContactUser) {
-      throw new NotFoundException('Contact user not found during update');
-    }
   
     return updatedCurrentUser;
   }
   
-
   async removeContact(currentUserId: string, contactUserId: string): Promise<User> {
     if (!Types.ObjectId.isValid(currentUserId)) {
       throw new BadRequestException('Invalid current user ID');
@@ -278,7 +269,6 @@ export class UsersService {
       throw new BadRequestException('Cannot remove yourself as a contact');
     }
   
-    // Check if the contact exists in current user's contact list
     const contactIndexInCurrent = currentUser.contacts.findIndex(
       (contact) => contact.user?.toString() === contactUserId
     );
@@ -286,39 +276,21 @@ export class UsersService {
       throw new BadRequestException('Contact not found in your contact list');
     }
   
-    // Check if the current user exists in contact's contact list
     const contactIndexInContact = contactUser.contacts.findIndex(
       (contact) => contact.user?.toString() === currentUserId
     );
-    if (contactIndexInContact === -1) {
-      throw new BadRequestException('You are not in the contact\'s contact list');
-    }
-  
-    // Remove contact from current user's list
+   
+
     const updatedContactsForCurrent = [...currentUser.contacts];
     updatedContactsForCurrent.splice(contactIndexInCurrent, 1);
     const updateDataForCurrent = { contacts: updatedContactsForCurrent };
-  
-    // Remove current user from contact's list
-    const updatedContactsForContact = [...contactUser.contacts];
-    updatedContactsForContact.splice(contactIndexInContact, 1);
-    const updateDataForContact = { contacts: updatedContactsForContact };
-  
-    // Update both users
+
     const updatedCurrentUser = await this.userRepository.updateUser(
       currentUserId,
       updateDataForCurrent
     );
     if (!updatedCurrentUser) {
       throw new NotFoundException('Current user not found during update');
-    }
-  
-    const updatedContactUser = await this.userRepository.updateUser(
-      contactUserId,
-      updateDataForContact
-    );
-    if (!updatedContactUser) {
-      throw new NotFoundException('Contact user not found during update');
     }
   
     return updatedCurrentUser;

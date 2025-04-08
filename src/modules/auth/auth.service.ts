@@ -17,7 +17,7 @@ export class AuthService {
     private readonly configService: ConfigService<IConfig>,
   ) {}
 
-  async signUp(createUserDto: CreateUserDto): Promise<Tokens> {
+  async signUp(createUserDto: CreateUserDto): Promise<any> {
     const hashedPassword = await this.hashData(createUserDto.password);
 
     const user = await this.usersService.createUser({
@@ -28,10 +28,10 @@ export class AuthService {
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user._id.toString(), tokens.refresh_token);
 
-    return tokens;
+    return {tokens, user};
   }
 
-  async signIn(signInDto: SignInDto): Promise<Tokens> {
+  async signIn(signInDto: SignInDto): Promise<any> {
     const user = await this.validateCredentials(
       signInDto.identifier,
       signInDto.password,
@@ -41,7 +41,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user._id.toString(), tokens.refresh_token);
 
-    return tokens;
+    return {tokens, user};
   }
 
   async refreshTokens(userId: string, refreshToken: string): Promise<Tokens> {
