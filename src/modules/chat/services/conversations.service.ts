@@ -73,6 +73,7 @@ export class ConversationsService {
       throw error;
     }
   }
+
   async findUserConversations(
     userId: string,
     skip = 0,
@@ -98,6 +99,7 @@ export class ConversationsService {
       { lastActivityAt: -1 }
     );
   }
+
   async findOne(id: Types.ObjectId): Promise<ConversationDocument> {
     const conversation = await this.conversationRepository.findById(id);
     if (!conversation) {
@@ -105,6 +107,7 @@ export class ConversationsService {
     }
     return conversation;
   }
+
   async archive(
     id: Types.ObjectId,
     userId: Types.ObjectId
@@ -121,6 +124,7 @@ export class ConversationsService {
     }
     return updatedConversation;
   }
+
   async block(
     id: Types.ObjectId,
     userId: Types.ObjectId
@@ -146,6 +150,7 @@ export class ConversationsService {
 
     return updatedConversation;
   }
+
   async unblock(
     id: Types.ObjectId,
     userId: Types.ObjectId
@@ -167,6 +172,7 @@ export class ConversationsService {
 
     return updatedConversation;
   }
+
   async markAsDelivred(
     conversationId: Types.ObjectId,
     userId: Types.ObjectId
@@ -191,6 +197,7 @@ export class ConversationsService {
 
     return updatedConversation;
   }
+
   async markAsRead(
     conversationId: Types.ObjectId,
     userId: Types.ObjectId
@@ -215,6 +222,7 @@ export class ConversationsService {
 
     return updatedConversation;
   }
+
   async setLastMessage(
     conversationId: Types.ObjectId,
     messageId: Types.ObjectId,
@@ -240,6 +248,7 @@ export class ConversationsService {
 
     return updated;
   }
+
   async deactivate(id: Types.ObjectId): Promise<ConversationDocument> {
     const updated = await this.conversationRepository.updateById(id, {
       isActive: false,
@@ -252,6 +261,7 @@ export class ConversationsService {
 
     return updated;
   }
+  
   private isParticipant(conversation: ConversationDocument, userId: Types.ObjectId): boolean {
     return conversation.participant1 === userId ||
       conversation.participant2 === userId;

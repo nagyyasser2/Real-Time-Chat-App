@@ -16,7 +16,7 @@ import { PhotoVisibility } from './enums/profile-photo.enum';
 export class UsersService {
   constructor(private readonly userRepository: UserRepository) {}
 
-   private readonly logger = new Logger(UsersService.name);
+  private readonly logger = new Logger(UsersService.name);
 
   async findOne(
     id: string,
@@ -287,76 +287,84 @@ export class UsersService {
     return updatedCurrentUser;
   }
 
-  async removeContact(currentUserId: string, contactUserId: string): Promise<User> {
-    if (!Types.ObjectId.isValid(currentUserId)) {
-      throw new BadRequestException('Invalid current user ID');
+  async removeContact(
+    currentUserId: string,
+    contactUserId: string,
+  ): Promise<User> {
+    // Validate input IDs
+    if (
+      !Types.ObjectId.isValid(currentUserId) ||
+      !Types.ObjectId.isValid(contactUserId)
+    ) {
+      throw new BadRequestException('Invalid user ID');
     }
-    if (!Types.ObjectId.isValid(contactUserId)) {
-      throw new BadRequestException('Invalid contact user ID');
-    }
-  
+
+    // Convert string IDs to ObjectIds for consistent comparison
+    const currentUserObjectId = new Types.ObjectId(currentUserId);
+    const contactUserObjectId = new Types.ObjectId(contactUserId);
+
+    // Find both users
     const currentUser = await this.userRepository.findUserById(currentUserId);
-    if (!currentUser) {
-      throw new NotFoundException('Current user not found');
-    }
-  
     const contactUser = await this.userRepository.findUserById(contactUserId);
-    if (!contactUser) {
-      throw new NotFoundException('Contact user not found');
+
+    if (!currentUser || !contactUser) {
+      throw new NotFoundException('User not found');
     }
-  
+
     if (currentUserId === contactUserId) {
       throw new BadRequestException('Cannot remove yourself as a contact');
     }
-  
-    const contactIndexInCurrent = currentUser.contacts.findIndex(
-      (contact) => contact.user?.toString() === contactUserId
+
+    // Find current user's contact by comparing ObjectIds
+    const contactIndexInCurrent = currentUser.contacts.findIndex((contact) =>
+      new Types.ObjectId(contact.user).equals(contactUserObjectId),
     );
+
     if (contactIndexInCurrent === -1) {
       throw new BadRequestException('Contact not found in your contact list');
     }
-  
-    const contactIndexInContact = contactUser.contacts.findIndex(
-      (contact) => contact.user?.toString() === currentUserId
+
+    // Find the current user in contact's list using ObjectId.equals()
+    const contactIndexInContact = contactUser.contacts.findIndex((contact) =>
+      new Types.ObjectId(contact.user).equals(currentUserObjectId),
     );
-  
-    // Remove the contact from current user's contacts
+
+    // Remove contact from current user's list
     const updatedContactsForCurrent = [...currentUser.contacts];
     updatedContactsForCurrent.splice(contactIndexInCurrent, 1);
-    const updateDataForCurrent = { contacts: updatedContactsForCurrent };
-  
-    // Mark the contact as removed in the other user's contacts list if they have current user in contacts
+
+    // Update contact user if needed
     if (contactIndexInContact !== -1) {
-      // Create a deep copy to avoid reference issues
-      const updatedContactsForContact = JSON.parse(JSON.stringify(contactUser.contacts));
-      
-      // Set the removedByContact flag to true
-      updatedContactsForContact[contactIndexInContact].removedByContact = true;
-      
-      this.logger.debug(`Marking user ${currentUserId} as removed in contact ${contactUserId}'s list`);
-      
-      // Explicitly await this update to ensure it completes
-      const updateResult = await this.userRepository.updateUser(contactUserId, {
-        contacts: updatedContactsForContact
-      });
-      
-      // Log the result for debugging
-      if (!updateResult) {
-        this.logger.error(`Failed to update removedByContact flag for user ${contactUserId}`);
-      } else {
-        this.logger.debug(`Successfully updated removedByContact flag for user ${contactUserId}`);
+      // Create a deep copy of the contacts array
+      const contactsToUpdate = JSON.parse(JSON.stringify(contactUser.contacts));
+
+      // Set the flag and ensure we're not modifying by reference
+      contactsToUpdate[contactIndexInContact] = {
+        ...contactsToUpdate[contactIndexInContact],
+        removedByContact: true,
+      };
+
+      try {
+        // Update the contact user
+        await this.userRepository.updateUser(contactUserId, {
+          contacts: contactsToUpdate,
+        });
+       
+      } catch (error) {
+        console.error('Error updating contact user:', error);
       }
     }
-  
+
+    // Update current user's contacts
     const updatedCurrentUser = await this.userRepository.updateUser(
       currentUserId,
-      updateDataForCurrent
+      { contacts: updatedContactsForCurrent },
     );
-    
+
     if (!updatedCurrentUser) {
       throw new NotFoundException('Current user not found during update');
     }
-  
+
     return updatedCurrentUser;
   }
 }
