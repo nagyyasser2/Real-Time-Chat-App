@@ -161,7 +161,6 @@ export class UsersService {
   }
 
   async updateLastSeen(userId: string): Promise<User> {
-    console.log(`userId: ${userId}, executing...`)
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid user ID');
     }

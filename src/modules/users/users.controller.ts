@@ -121,9 +121,11 @@ export class UsersController {
     return this.usersService.updateStatus(id, status);
   }
 
-  @Put(':id/last-seen')
-  async updateLastSeen(@Param('id') id: string): Promise<User> {
-    return this.usersService.updateLastSeen(id);
+  @UseGuards(JwtAuthGuard)
+  @Put('last-seen')
+  async updateLastSeen(@CurrentUser() user): Promise<any> {
+    console.log(user)
+    return this.usersService.updateLastSeen(user._id);
   }
 
   @Patch(':id/privacy-settings')
