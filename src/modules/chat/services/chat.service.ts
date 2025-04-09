@@ -12,6 +12,7 @@ import { MissedEvent } from '../interfaces/missed-event.interface';
 import { MessageStatus } from '../enums/message-status.enum';
 import { CreateMessageDto } from '../dtos/create-message.dto';
 import { Server } from 'socket.io';
+import { bool } from 'joi';
 
 @Injectable()
 export class ChatService {
@@ -161,8 +162,9 @@ export class ChatService {
   async handleUserConnect(userId: string, client: Socket): Promise<void> {
     try {
       this.logger.debug(`User connected: ${userId}`);
-      await this.joinUserRooms(userId, client); // Join rooms FIRST
-      await this.processMissedEvents(userId); // THEN process missed events
+      await this.usersService.updateLastSeen(userId);
+      await this.joinUserRooms(userId, client); 
+      await this.processMissedEvents(userId);
       await this.notifyContactsWithUserStatus(userId, 'online');
       await this.notifyUserWithOnlineContacts(userId, client);
     } catch (error) {
@@ -173,6 +175,7 @@ export class ChatService {
 
   async handleUserDisconnect(userId: string): Promise<void> {
     this.logger.log(`User disconnected: ${userId}`);
+    await this.usersService.updateLastSeen(userId),
     await this.notifyContactsWithUserStatus(userId, 'offline');
     await this.redisStore.removeUser(userId);
   }
@@ -424,5 +427,9 @@ export class ChatService {
             : 'Failed to mark conversation as read',
       });
     }
+  }
+
+  async handleLastSeen( requestingUserId:string, userId:string){
+    return await this.usersService.checkLastSeenAccess(requestingUserId, userId)
   }
 }

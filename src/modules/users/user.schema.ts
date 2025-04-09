@@ -67,7 +67,7 @@ export class User {
   contacts: Array<{
     user: Types.ObjectId;
     blocked: boolean;
-    removedByContact: boolean; // New field to track if this contact removed the user
+    removedByContact: boolean;
   }>;
 
   @Prop({

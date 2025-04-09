@@ -161,6 +161,7 @@ export class UsersService {
   }
 
   async updateLastSeen(userId: string): Promise<User> {
+    console.log(`userId: ${userId}, executing...`)
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid user ID');
     }
@@ -171,6 +172,30 @@ export class UsersService {
     }
     return user;
   }
+
+  async checkLastSeenAccess(requestingUserId: string, userId: string){
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+    if (!Types.ObjectId.isValid(requestingUserId)) {
+      throw new BadRequestException('Invalid requestingUserId ID');
+    }
+
+   return await this.userRepository.checkLastSeenAccess(requestingUserId,userId);
+  }
+  
+  async handleLastSeen(requestingUserId: string, userId: string) {
+    try {
+      // First update the lastSeen timestamp
+      await this.updateLastSeen(userId);
+      
+      // Then check if the requesting user has access to see it
+      return await this.checkLastSeenAccess(requestingUserId, userId);
+    } catch (error) {
+      console.error('Error handling lastSeen:', error);
+      return null;
+    }
+}
 
   async updatePrivacySettings(
     userId: string,

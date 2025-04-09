@@ -149,4 +149,24 @@ export class ChatGateway
       client,
     );
   }
+
+  @SubscribeMessage(ChatEvents.LAST_SEEN)
+  async handleLastSeen(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { userId: string },
+  ) {
+    const requestingUserId = this.getUserIdFromSocket(client);
+  
+    if (!requestingUserId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
+  
+    try {
+      const result = await this.chatService.handleLastSeen(requestingUserId, payload.userId);
+      client.emit(ChatEvents.LAST_SEEN, { lastSeen: result });
+    } catch (error) {
+      client.emit(ChatEvents.ERROR, { message: 'Failed to retrieve last seen status' });
+    }
+  }
 }
