@@ -27,9 +27,9 @@ export class MessagesService {
   async findAllForConversation(
     conversationId: Types.ObjectId,
     skip = 0,
-    limit = 20,
+    limit = 10,
   ): Promise<MessageDocument[]> {
-    return this.messageRepository.findByConversation(
+    return await this.messageRepository.findByConversation(
       conversationId,
       skip,
       limit,

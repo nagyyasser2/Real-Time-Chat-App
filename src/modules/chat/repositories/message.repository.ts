@@ -22,9 +22,9 @@ export class MessageRepository {
     skip = 0,
     limit = 20,
   ): Promise<MessageDocument[]> {
-    return this.messageModel
+    return  await this.messageModel
       .find({
-        conversation: conversationId,
+        conversationId: conversationId,
         isDeleted: false,
       })
       .sort({ timestamp: 1 })
@@ -37,7 +37,7 @@ export class MessageRepository {
     userId: Types.ObjectId,
     date: Date,
   ): Promise<MessageDocument[]> {
-    return this.messageModel
+    return await this.messageModel
       .find({
         sender: userId,
         timestamp: { $gte: date },
@@ -48,7 +48,7 @@ export class MessageRepository {
   }
 
   async findById(messageId: Types.ObjectId): Promise<MessageDocument | null> {
-    return this.messageModel
+    return await this.messageModel
       .findOne({ _id: messageId, isDeleted: false })
       .exec();
   }
@@ -58,7 +58,7 @@ export class MessageRepository {
     update: UpdateQuery<MessageDocument>,
     options = { new: true },
   ): Promise<MessageDocument | null> {
-    return this.messageModel
+    return await this.messageModel
       .findByIdAndUpdate(messageId, update, options)
       .exec();
   }
@@ -67,30 +67,30 @@ export class MessageRepository {
     filter: FilterQuery<MessageDocument>,
     update: UpdateQuery<MessageDocument>,
   ): Promise<any> {
-    return this.messageModel.updateMany(filter, update).exec();
+    return await this.messageModel.updateMany(filter, update).exec();
   }
 
   async findMany(
     filter: FilterQuery<MessageDocument>,
   ): Promise<MessageDocument[]> {
-    return this.messageModel.find(filter).exec();
+    return await this.messageModel.find(filter).exec();
   }
 
   async updateStatus(
     messageId: Types.ObjectId,
     status: MessageStatus,
   ): Promise<MessageDocument | null> {
-    return this.messageModel
+    return await this.messageModel
       .findByIdAndUpdate(messageId, { $set: { status } }, { new: true })
       .exec();
   }
 
   async delete(messageId: Types.ObjectId): Promise<MessageDocument | null> {
-    return this.messageModel.findByIdAndDelete(messageId).exec();
+    return await this.messageModel.findByIdAndDelete(messageId).exec();
   }
 
   async deleteMany(conversationId: Types.ObjectId): Promise<void> {
-    await this.messageModel.deleteMany({ conversationId }).exec();
+    await await this.messageModel.deleteMany({ conversationId }).exec();
   }
 
   async addReaction(
@@ -98,7 +98,7 @@ export class MessageRepository {
     userId: Types.ObjectId,
     emoji: string,
   ): Promise<MessageDocument | null> {
-    return this.messageModel
+    return await this.messageModel
       .findByIdAndUpdate(
         messageId,
         {
@@ -115,7 +115,7 @@ export class MessageRepository {
     messageId: Types.ObjectId,
     newContent: any,
   ): Promise<MessageDocument | null> {
-    return this.messageModel
+    return await this.messageModel
       .findByIdAndUpdate(
         messageId,
         {
@@ -132,7 +132,7 @@ export class MessageRepository {
   async countMessagesInConversation(
     conversationId: Types.ObjectId,
   ): Promise<number> {
-    return this.messageModel
+    return await this.messageModel
       .countDocuments({
         conversation: conversationId,
         isDeleted: false,
