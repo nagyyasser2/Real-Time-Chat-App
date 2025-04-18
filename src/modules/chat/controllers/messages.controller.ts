@@ -6,13 +6,16 @@ import {
   Patch,
   Param,
   Delete,
-  Query
+  Query,
+  Put
 } from '@nestjs/common';
 import { MessagesService } from '../services/messages.service';
 import { CreateMessageDto } from '../dtos/create-message.dto';
 import { UpdateMessageDto } from '../dtos/update-message.dto';
 import { Types } from 'mongoose';
 import { MessageStatus } from '../enums/message-status.enum';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
+import { User } from 'src/modules/users/user.schema';
 
 @Controller('messages')
 export class MessagesController {
@@ -21,6 +24,11 @@ export class MessagesController {
   @Post()
   async create(@Body() createMessageDto: CreateMessageDto) {
     return this.messagesService.create(createMessageDto);
+  }
+
+  @Patch('read/:id')
+  async markMessageAsRead(@CurrentUser() user: User, @Param('id') messageId: Types.ObjectId){
+    return await this.messagesService.markMessageAsRead(messageId)
   }
 
   @Get('conversation/:conversationId')

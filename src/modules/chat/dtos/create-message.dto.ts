@@ -3,8 +3,8 @@ import { MessageType } from "../../chat/enums/message-type.enum";
 import { MessageStatus } from "../../chat/enums/message-status.enum";
 
 export class CreateMessageDto {
-  conversationId: string; // Keep as string for validation
-  senderId: string;
+  conversationId: Types.ObjectId; // Keep as string for validation
+  senderId: Types.ObjectId;
   content: {
     text?: string;
     media?: Array<{

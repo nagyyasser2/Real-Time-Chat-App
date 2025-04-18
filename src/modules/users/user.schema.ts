@@ -22,8 +22,8 @@ export class User {
   @Prop({ type: String, required: true })
   password: string;
 
-  @Prop({ type: String })
-  profilePic?: string;
+  @Prop({ type: String , default:"http://sahab/assets/saldfjslakfjd" })
+  profilePic: string;
 
   @Prop({ type: String, default: null })
   status?: string;

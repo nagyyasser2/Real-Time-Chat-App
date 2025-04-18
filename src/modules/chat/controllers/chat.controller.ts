@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Put,
 } from '@nestjs/common';
 import { ConversationsService } from '../services/conversations.service';
 import { Types } from 'mongoose';
@@ -48,11 +49,23 @@ export class ChatController {
     @CurrentUser() user: User,
     @Query('skip') skip: string,
     @Query('limit') limit: string,
-    @Param('id') conversationId: Types.ObjectId
+    @Param('id') conversationId: Types.ObjectId,
   ) {
     const skipNumber = parseInt(skip) || 0;
     const limitNumber = parseInt(limit) || 10;
 
-    return await this.messagesService.findAllForConversation(conversationId, skipNumber, limitNumber);
+    return await this.messagesService.findAllForConversation(
+      conversationId,
+      skipNumber,
+      limitNumber,
+    );
+  }
+
+  @Put('messages/conversation/:id')
+  async markMessagesAsRead(
+    @CurrentUser() user: User,
+    @Param('id') conversationId:string,
+  ) {
+    return await this.messagesService.markMessagesAsRead(conversationId, user._id);
   }
 }

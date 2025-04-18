@@ -4,7 +4,6 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
-
 import { Types } from 'mongoose';
 import { MessageRepository } from '../repositories/message.repository';
 import { MessageDocument } from '../schemas/message.schema';
@@ -20,7 +19,7 @@ export class MessagesService {
   constructor(private readonly messageRepository: MessageRepository) {}
 
   async create(createMessageDto: CreateMessageDto): Promise<MessageDocument> {
-    const message = await this.messageRepository.create(createMessageDto);
+    const message = await this.messageRepository.create({...createMessageDto, senderId: new Types.ObjectId(createMessageDto.senderId), conversationId: new Types.ObjectId(createMessageDto.conversationId)});
     return message;
   }
 
@@ -116,12 +115,12 @@ export class MessagesService {
     return this.messageRepository.findMessagesByUserAfterDate(userId, date);
   }
 
-  async markAsRead(
+  async markMessageAsRead(
     messageId: Types.ObjectId | string,
   ): Promise<MessageDocument | null> {
     return this.messageRepository.findByIdAndUpdate(
       messageId,
-      { status: MessageStatus.READ },
+      { isRead: true },
       { new: true },
     );
   }
@@ -133,5 +132,9 @@ export class MessagesService {
       { _id: { $in: messageIds } },
       { status: MessageStatus.READ },
     );
+  }
+  
+  async markMessagesAsRead(conversationId: string, userId: string){
+    return await this.messageRepository.markMessagesAsRead(conversationId, userId);
   }
 }

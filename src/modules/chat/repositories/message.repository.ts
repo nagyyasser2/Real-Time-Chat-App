@@ -139,4 +139,19 @@ export class MessageRepository {
       })
       .exec();
   }
+
+  async markMessagesAsRead(conversationId: string, userId: string) {
+    const result = await this.messageModel
+      .updateMany(
+        {
+          conversationId: new Types.ObjectId(conversationId),
+          senderId: { $ne: new Types.ObjectId(userId) },
+          isRead: false,
+        },
+        { $set: { isRead: true } },
+      )
+      .exec();
+
+    return { modifiedCount: result.modifiedCount };
+  }
 }

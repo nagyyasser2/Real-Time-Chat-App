@@ -1,16 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, FilterQuery, ProjectionType, QueryOptions, Types, UpdateQuery } from 'mongoose';
-import { Conversation, ConversationDocument } from '../schemas/conversation.schema';
+import {
+  Model,
+  FilterQuery,
+  ProjectionType,
+  QueryOptions,
+  Types,
+  UpdateQuery,
+} from 'mongoose';
+import {
+  Conversation,
+  ConversationDocument,
+} from '../schemas/conversation.schema';
+import { MessageStatus } from '../enums/message-status.enum';
+import { MessageDocument } from '../schemas/message.schema';
 
 @Injectable()
 export class ConversationRepository {
   constructor(
     @InjectModel(Conversation.name)
     private readonly conversationModel: Model<ConversationDocument>,
-  ) { }
+  ) {}
 
-  async create(conversation: Partial<Conversation>): Promise<ConversationDocument> {
+  async create(
+    conversation: Partial<Conversation>,
+  ): Promise<ConversationDocument> {
     return this.conversationModel.create(conversation);
   }
 
@@ -33,23 +47,29 @@ export class ConversationRepository {
     participant1Id: Types.ObjectId,
     participant2Id: Types.ObjectId,
   ): Promise<ConversationDocument | null> {
-    const [sortedParticipant1, sortedParticipant2] = [participant1Id, participant2Id].sort();
-    return this.conversationModel.findOne({
-      participant1: sortedParticipant1,
-      participant2: sortedParticipant2,
-      isActive: true,
-    }).exec();
+    const [sortedParticipant1, sortedParticipant2] = [
+      participant1Id,
+      participant2Id,
+    ].sort();
+    return this.conversationModel
+      .findOne({
+        participant1: sortedParticipant1,
+        participant2: sortedParticipant2,
+        isActive: true,
+      })
+      .exec();
   }
 
   async findUserConversations(
     userId: Types.ObjectId,
     isArchived: boolean = false,
   ): Promise<ConversationDocument[]> {
-    return this.conversationModel.find({
-      $or: [{ participant1: userId }, { participant2: userId }],
-      isActive: true,
-      isArchived,
-    })
+    return this.conversationModel
+      .find({
+        $or: [{ participant1: userId }, { participant2: userId }],
+        isActive: true,
+        isArchived,
+      })
       .sort({ lastActivityAt: -1 })
       .exec();
   }
@@ -66,7 +86,7 @@ export class ConversationRepository {
   async updateOne(
     filter: FilterQuery<Conversation>,
     update: UpdateQuery<Conversation>,
-    options: QueryOptions = { new: true }
+    options: QueryOptions = { new: true },
   ): Promise<ConversationDocument | null> {
     return this.conversationModel
       .findOneAndUpdate(filter, update, options)
@@ -151,32 +171,155 @@ export class ConversationRepository {
   }
 
   async findAllPaginated(
-    filter: FilterQuery<Conversation>,
-    skip: number,
-    limit: number,
-    sort?: Record<string, 1 | -1>,
-  ): Promise<{ data: ConversationDocument[]; total: number }> {
-    const [data, total] = await Promise.all([
-      this.conversationModel
-        .find(filter)
-        .skip(skip)
-        .limit(limit)
-        .sort(sort || { lastActivityAt: -1 })
-        .exec(),
-      this.conversationModel.countDocuments(filter).exec(),
+    filter: FilterQuery<ConversationDocument>,
+    userId: string,
+    skip = 0,
+    limit = 10,
+    sort: any = { lastActivityAt: -1 },
+  ) {
+    const userObjectId = new Types.ObjectId(userId);
+
+    const conversations = await this.conversationModel.aggregate([
+      { $match: filter },
+      { $sort: sort },
+      { $skip: skip },
+      { $limit: limit },
+
+      // Populate participant1
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'participant1',
+          foreignField: '_id',
+          as: 'participant1',
+        },
+      },
+      { $unwind: '$participant1' },
+
+      // Populate participant2
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'participant2',
+          foreignField: '_id',
+          as: 'participant2',
+        },
+      },
+      { $unwind: '$participant2' },
+
+      // Populate lastMessage
+      {
+        $lookup: {
+          from: 'messages', // REPLACE WITH ACTUAL COLLECTION NAME IF DIFFERENT
+          localField: 'lastMessage',
+          foreignField: '_id',
+          as: 'lastMessage',
+        },
+      },
+      {
+        $unwind: {
+          path: '$lastMessage',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // Add userLastReadAt
+      {
+        $addFields: {
+          userLastReadAt: {
+            $ifNull: [
+              { $getField: { field: userId.toString(), input: '$lastReadAt' } },
+              new Date(0),
+            ],
+          },
+        },
+      },
+
+      // Lookup unread messages
+      {
+        $lookup: {
+          from: 'messages', // REPLACE WITH ACTUAL COLLECTION NAME IF DIFFERENT
+          let: {
+            convoId: '$_id',
+            userLastReadAt: '$userLastReadAt',
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$conversationId', '$$convoId'] },
+                    { $ne: ['$senderId', userObjectId] },
+                    { $eq: ['$isRead', false] },
+                    { $eq: ['$isDeleted', false] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'unreadMessages',
+        },
+      },
+
+      // Add unread count field
+      {
+        $addFields: {
+          unreadMessagesCount: { $size: '$unreadMessages' },
+        },
+      },
+
+      // Add otherParticipant field
+      {
+        $addFields: {
+          otherParticipant: {
+            $let: {
+              vars: {
+                participant1Selected: {
+                  _id: '$participant1._id',
+                  username: '$participant1.username',
+                },
+                participant2Selected: {
+                  _id: '$participant2._id',
+                  username: '$participant2.username',
+                },
+              },
+              in: {
+                $cond: {
+                  if: { $eq: ['$participant1._id', userObjectId] },
+                  then: '$$participant2Selected',
+                  else: '$$participant1Selected',
+                },
+              },
+            },
+          },
+        },
+      },
+
+      // Final projection
+      {
+        $project: {
+          allMessages: 0,
+          userLastReadAt: 0,
+          unreadMessages: 0,
+          participant1: 0,
+          participant2: 0,
+        },
+      },
     ]);
 
-    return { data, total };
+    return conversations;
   }
 
   async isParticipant(
     conversationId: Types.ObjectId,
     userId: Types.ObjectId,
   ): Promise<boolean> {
-    const count = await this.conversationModel.countDocuments({
-      _id: conversationId,
-      $or: [{ participant1: userId }, { participant2: userId }],
-    }).exec();
+    const count = await this.conversationModel
+      .countDocuments({
+        _id: conversationId,
+        $or: [{ participant1: userId }, { participant2: userId }],
+      })
+      .exec();
     return count > 0;
   }
 
@@ -184,10 +327,12 @@ export class ConversationRepository {
     conversationId: Types.ObjectId,
     userId: Types.ObjectId,
   ): Promise<boolean> {
-    const count = await this.conversationModel.countDocuments({
-      _id: conversationId,
-      blockedBy: userId,
-    }).exec();
+    const count = await this.conversationModel
+      .countDocuments({
+        _id: conversationId,
+        blockedBy: userId,
+      })
+      .exec();
     return count > 0;
   }
 }

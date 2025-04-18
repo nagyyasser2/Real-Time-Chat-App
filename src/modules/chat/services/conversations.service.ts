@@ -75,31 +75,32 @@ export class ConversationsService {
   }
 
   async findUserConversations(
-    userId: string,
+    userId: any,
     skip = 0,
     limit = 10,
     includeArchived = false
-  ): Promise<{ data: ConversationDocument[]; total: number }> {
+  ): Promise<any> {
     const filter: FilterQuery<ConversationDocument> = {
       $or: [
-        { participant1: userId },
-        { participant2: userId }
+        { participant1: new Types.ObjectId(userId) },
+        { participant2: new Types.ObjectId(userId) }
       ],
       isActive: true
     };
-
+  
     if (!includeArchived) {
       filter.isArchived = false;
     }
-
+  
     return this.conversationRepository.findAllPaginated(
       filter,
+      userId,
       skip,
       limit,
-      { lastActivityAt: -1 }
+      { lastActivityAt: -1 }, 
     );
   }
-
+  
   async findOne(id: Types.ObjectId): Promise<ConversationDocument> {
     const conversation = await this.conversationRepository.findById(id);
     if (!conversation) {
