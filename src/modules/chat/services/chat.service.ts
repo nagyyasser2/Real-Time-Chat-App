@@ -6,12 +6,12 @@ import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
 import { UsersService } from '../../users/users.service';
 import { ChatEvents } from '../chat.events';
-import { CreateConversationDto } from '../dtos/create-conversation.dto';
 import { SendMessageDto } from '../dtos/send-message.dto';
 import { MissedEvent } from '../interfaces/missed-event.interface';
 import { MessageStatus } from '../enums/message-status.enum';
 import { CreateMessageDto } from '../dtos/create-message.dto';
 import { Server } from 'socket.io';
+import { MessageDocument } from '../schemas/message.schema';
 
 @Injectable()
 export class ChatService {
@@ -181,42 +181,6 @@ export class ChatService {
     await this.redisStore.removeUser(userId);
   }
 
-  async createConversation(
-    senderId: string,
-    payload: CreateConversationDto,
-    client: Socket,
-  ): Promise<void> {
-    const { participant2 } = payload;
-
-    try {
-      let conversation = await this.conversationsService.create(
-        senderId,
-        participant2,
-      );
-
-      client.emit(ChatEvents.CONVERSATION_CREATED, conversation);
-      this.server
-        .to(participant2)
-        .emit(ChatEvents.NEW_CONVERSATION, conversation);
-
-      const participantOnline =
-        await this.redisStore.isUserOnline(participant2);
-
-      if (!participantOnline) {
-        const missedEvent: MissedEvent = {
-          eventName: ChatEvents.NEW_CONVERSATION,
-          payload: conversation,
-          timestamp: Date.now(),
-          conversationId: conversation.id,
-        };
-
-        await this.redisStore.storeMissedEvent(participant2, missedEvent);
-      }
-    } catch (error) {
-      client.emit(ChatEvents.ERROR, { message: error.message });
-    }
-  }
-
   async sendMessage(
     senderId: string,
     payload: SendMessageDto,
@@ -235,7 +199,7 @@ export class ChatService {
       if (payload.conversationId) {
         try {
           const conversationId = this.validateObjectId(payload.conversationId);
-          conversation = await this.conversationsService.findOne(conversationId);
+          conversation = await this.conversationsService.findOneById(conversationId);
         } catch (error) {
           this.logger.debug(`Invalid conversation ID: ${error.message}`);
         }
@@ -277,8 +241,8 @@ export class ChatService {
     const conversation = await this.conversationsService.create(senderId, receiverId);
     
     // Notify both participants about the new conversation
-    this.server.to(receiverId).emit(ChatEvents.NEW_CONVERSATION, conversation);
-    this.server.to(senderId).emit(ChatEvents.NEW_CONVERSATION, conversation);
+     this.server.to(receiverId).emit(ChatEvents.NEW_CONVERSATION, conversation);
+     this.server.to(senderId).emit(ChatEvents.NEW_CONVERSATION, conversation);
     
     return conversation;
   }
@@ -394,7 +358,7 @@ export class ChatService {
 
       // Verify conversation exists and user is a participant
       const conversation =
-        await this.conversationsService.findOne(conversationId);
+        await this.conversationsService.findOneById(conversationId);
       if (!conversation) {
         throw new BadRequestException('Conversation not found');
       }
@@ -444,7 +408,7 @@ export class ChatService {
     try {
       const conversationId = new Types.ObjectId(payload.conversationId);
       const conversation =
-        await this.conversationsService.findOne(conversationId);
+        await this.conversationsService.findOneById(conversationId);
 
       if (!conversation) {
         throw new BadRequestException('Conversation not found');
@@ -505,5 +469,15 @@ export class ChatService {
       requestingUserId,
       userId,
     );
+  }
+
+  async markMessagesAsRead(conversationId: string, userId: string){
+    return await this.messagesService.markMessagesAsRead(conversationId, userId)
+  }
+
+  async markMessageAsRead(
+    messageId: Types.ObjectId | string,
+  ): Promise<MessageDocument | null> {
+    return await this.messagesService.markMessageAsRead(messageId);
   }
 }

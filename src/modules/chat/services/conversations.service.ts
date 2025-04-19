@@ -101,7 +101,7 @@ export class ConversationsService {
     );
   }
   
-  async findOne(id: Types.ObjectId): Promise<ConversationDocument> {
+  async findOneById(id: Types.ObjectId): Promise<ConversationDocument> {
     const conversation = await this.conversationRepository.findById(id);
     if (!conversation) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
@@ -113,7 +113,7 @@ export class ConversationsService {
     id: Types.ObjectId,
     userId: Types.ObjectId
   ): Promise<ConversationDocument> {
-    const conversation = await this.findOne(id);
+    const conversation = await this.findOneById(id);
 
     if (!this.isParticipant(conversation, userId)) {
       throw new BadRequestException('User is not a participant in this conversation');
@@ -130,7 +130,7 @@ export class ConversationsService {
     id: Types.ObjectId,
     userId: Types.ObjectId
   ): Promise<ConversationDocument> {
-    const conversation = await this.findOne(id);
+    const conversation = await this.findOneById(id);
 
     if (!this.isParticipant(conversation, userId)) {
       throw new BadRequestException('User is not a participant in this conversation');
@@ -156,7 +156,7 @@ export class ConversationsService {
     id: Types.ObjectId,
     userId: Types.ObjectId
   ): Promise<ConversationDocument> {
-    const conversation = await this.findOne(id);
+    const conversation = await this.findOneById(id);
 
     if (!this.isParticipant(conversation, userId)) {
       throw new BadRequestException('User is not a participant in this conversation');
@@ -178,7 +178,7 @@ export class ConversationsService {
     conversationId: Types.ObjectId,
     userId: Types.ObjectId
   ): Promise<ConversationDocument> {
-    const conversation = await this.findOne(conversationId);
+    const conversation = await this.findOneById(conversationId);
 
     if (!this.isParticipant(conversation, userId)) {
       throw new BadRequestException('User is not a participant in this conversation');
@@ -203,7 +203,7 @@ export class ConversationsService {
     conversationId: Types.ObjectId,
     userId: Types.ObjectId
   ): Promise<ConversationDocument> {
-    const conversation = await this.findOne(conversationId);
+    const conversation = await this.findOneById(conversationId);
 
     if (!this.isParticipant(conversation, userId)) {
       throw new BadRequestException('User is not a participant in this conversation');

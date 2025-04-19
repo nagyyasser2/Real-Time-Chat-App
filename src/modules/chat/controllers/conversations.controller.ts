@@ -34,6 +34,6 @@ export class ConversationsController {
 
   @Get(':id')
   async getOne(@Param('id') id: Types.ObjectId) {
-    return this.conversationsService.findOne(id);
+    return this.conversationsService.findOneById(id);
   }
 }

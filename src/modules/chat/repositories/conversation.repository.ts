@@ -13,7 +13,6 @@ import {
   ConversationDocument,
 } from '../schemas/conversation.schema';
 import { MessageStatus } from '../enums/message-status.enum';
-import { MessageDocument } from '../schemas/message.schema';
 
 @Injectable()
 export class ConversationRepository {
@@ -103,7 +102,6 @@ export class ConversationRepository {
         {
           lastMessage: messageId,
           lastActivityAt: new Date(),
-          $inc: { messageCount: 1 },
         },
         { new: true },
       )
@@ -210,7 +208,7 @@ export class ConversationRepository {
       // Populate lastMessage
       {
         $lookup: {
-          from: 'messages', // REPLACE WITH ACTUAL COLLECTION NAME IF DIFFERENT
+          from: 'messages',
           localField: 'lastMessage',
           foreignField: '_id',
           as: 'lastMessage',
@@ -238,7 +236,7 @@ export class ConversationRepository {
       // Lookup unread messages
       {
         $lookup: {
-          from: 'messages', // REPLACE WITH ACTUAL COLLECTION NAME IF DIFFERENT
+          from: 'messages',
           let: {
             convoId: '$_id',
             userLastReadAt: '$userLastReadAt',
@@ -250,7 +248,7 @@ export class ConversationRepository {
                   $and: [
                     { $eq: ['$conversationId', '$$convoId'] },
                     { $ne: ['$senderId', userObjectId] },
-                    { $eq: ['$isRead', false] },
+                    { $ne: ['$status', MessageStatus.READ] }, // Looking for messages not marked as READ
                     { $eq: ['$isDeleted', false] },
                   ],
                 },
@@ -303,6 +301,7 @@ export class ConversationRepository {
           unreadMessages: 0,
           participant1: 0,
           participant2: 0,
+          __v: 0
         },
       },
     ]);

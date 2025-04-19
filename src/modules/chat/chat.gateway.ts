@@ -14,7 +14,6 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RedisStoreService } from './services/redis-store.service';
 import { ChatEvents } from './chat.events';
-import { CreateConversationDto } from './dtos/create-conversation.dto';
 import { SendMessageDto } from './dtos/send-message.dto';
 import { ChatService } from './services/chat.service';
 
@@ -135,19 +134,55 @@ export class ChatGateway
   @SubscribeMessage(ChatEvents.READ_CONVERSATION)
   async handleConversationRead(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { conversationId: string; senderId: string },
-  ): Promise<void> {
+    @MessageBody() payload: { conversationId: string; receiverId: string },
+  ): Promise<any> {
     const userId = this.getUserIdFromSocket(client);
     if (!userId) {
       client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
       return;
     }
 
-    await this.chatService.markConversationMessagesAsRead(
-      userId,
-      payload,
-      client,
-    );
+    try {
+      const result = await this.chatService.markMessagesAsRead(
+        payload.conversationId,
+        userId,
+      );
+
+      // Emit success event back to the client
+      client.emit(ChatEvents.READ_CONVERSATION_SUCCESS, {
+        conversationId: payload.conversationId,
+        modifiedCount: result.modifiedCount,
+      });
+
+      // Notify other users in the conversation
+      this.server.to(payload.receiverId).emit(ChatEvents.MESSAGES_READ, {
+        conversationId: payload.conversationId,
+        userId: userId,
+      });
+    } catch (error) {
+      this.logger.error(`Error marking messages as read: ${error.message}`);
+      client.emit(ChatEvents.ERROR, {
+        message: 'Failed to mark messages as read',
+        conversationId: payload.conversationId,
+      });
+    }
+  }
+
+  @SubscribeMessage(ChatEvents.READ_MESSAGE)
+  async handleReadMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: { messageId: string; receiverId: string; conversationId: string },
+  ) {
+    await this.chatService.markMessageAsRead(payload.messageId);
+    client.emit(ChatEvents.MESSAGE_READ_SUCCESS);
+    
+    this.server
+      .to(payload.receiverId)
+      .emit(ChatEvents.MESSAGE_READ, {
+        messageId: payload.messageId,
+        conversationId: payload.conversationId,
+      });
   }
 
   @SubscribeMessage(ChatEvents.LAST_SEEN)
@@ -156,17 +191,22 @@ export class ChatGateway
     @MessageBody() payload: { userId: string },
   ) {
     const requestingUserId = this.getUserIdFromSocket(client);
-  
+
     if (!requestingUserId) {
       client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
       return;
     }
-  
+
     try {
-      const result = await this.chatService.handleLastSeen(requestingUserId, payload.userId);
+      const result = await this.chatService.handleLastSeen(
+        requestingUserId,
+        payload.userId,
+      );
       client.emit(ChatEvents.LAST_SEEN, { lastSeen: result });
     } catch (error) {
-      client.emit(ChatEvents.ERROR, { message: 'Failed to retrieve last seen status' });
+      client.emit(ChatEvents.ERROR, {
+        message: 'Failed to retrieve last seen status',
+      });
     }
   }
 }

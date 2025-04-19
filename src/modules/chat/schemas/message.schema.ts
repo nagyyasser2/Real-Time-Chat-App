@@ -38,10 +38,7 @@ export class Message {
     enum: [MessageStatus.DELIVERED, MessageStatus.READ, MessageStatus.SENT],
     default: MessageStatus.SENT,
   })
-  status: string;
-
-  @Prop({ default: false, required: true})
-  isRead: boolean
+  status: number;
 
   @Prop({ type: Types.ObjectId, ref: 'Message' })
   parentMessageId?: Types.ObjectId;

@@ -146,12 +146,11 @@ export class MessageRepository {
         {
           conversationId: new Types.ObjectId(conversationId),
           senderId: { $ne: new Types.ObjectId(userId) },
-          isRead: false,
+          status: { $ne: MessageStatus.READ },
         },
-        { $set: { isRead: true } },
-      )
+        { $set: { status: MessageStatus.READ } },
+      ) 
       .exec();
-
     return { modifiedCount: result.modifiedCount };
   }
 }

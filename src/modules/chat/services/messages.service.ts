@@ -13,13 +13,18 @@ import { UpdateMessageDto } from '../dtos/update-message.dto';
 
 @Injectable()
 export class MessagesService {
- async findMany(arg0: any) {
-    return await this.messageRepository.findMany(arg0);
-  }
   constructor(private readonly messageRepository: MessageRepository) {}
 
+  async findMany(arg0: any) {
+    return await this.messageRepository.findMany(arg0);
+  }
+
   async create(createMessageDto: CreateMessageDto): Promise<MessageDocument> {
-    const message = await this.messageRepository.create({...createMessageDto, senderId: new Types.ObjectId(createMessageDto.senderId), conversationId: new Types.ObjectId(createMessageDto.conversationId)});
+    const message = await this.messageRepository.create({
+      ...createMessageDto,
+      senderId: new Types.ObjectId(createMessageDto.senderId),
+      conversationId: new Types.ObjectId(createMessageDto.conversationId),
+    });
     return message;
   }
 
@@ -79,10 +84,12 @@ export class MessagesService {
     return deletedMessage;
   }
 
-  async removeMessagesByConversation(conversationId: Types.ObjectId): Promise<void> {
+  async removeMessagesByConversation(
+    conversationId: Types.ObjectId,
+  ): Promise<void> {
     await this.messageRepository.deleteMany(conversationId);
   }
-    
+
   async addReaction(
     messageId: Types.ObjectId,
     userId: Types.ObjectId,
@@ -120,7 +127,7 @@ export class MessagesService {
   ): Promise<MessageDocument | null> {
     return this.messageRepository.findByIdAndUpdate(
       messageId,
-      { isRead: true },
+      { status: MessageStatus.READ },
       { new: true },
     );
   }
@@ -133,8 +140,11 @@ export class MessagesService {
       { status: MessageStatus.READ },
     );
   }
-  
-  async markMessagesAsRead(conversationId: string, userId: string){
-    return await this.messageRepository.markMessagesAsRead(conversationId, userId);
+
+  async markMessagesAsRead(conversationId: string, userId: string) {
+    return await this.messageRepository.markMessagesAsRead(
+      conversationId,
+      userId,
+    );
   }
 }
