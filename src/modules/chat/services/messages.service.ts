@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { MessageRepository } from '../repositories/message.repository';
 import { MessageDocument } from '../schemas/message.schema';
@@ -28,16 +23,32 @@ export class MessagesService {
     return message;
   }
 
+  // magic
   async findAllForConversation(
+    userId: any,
     conversationId: Types.ObjectId,
     skip = 0,
     limit = 10,
-  ): Promise<MessageDocument[]> {
-    return await this.messageRepository.findByConversation(
+  ): Promise<any> {
+    const result = await this.messageRepository.findByConversation(
       conversationId,
       skip,
       limit,
     );
+
+    const unreadMessageIds = result
+      .filter(
+        (message) =>
+          !message.senderId.equals(userId) &&
+          message.status !== MessageStatus.READ,
+      )
+      .map((message) => message._id);
+
+    if (unreadMessageIds.length > 0) {
+      await this.markMultipleAsRead(unreadMessageIds);
+    }
+
+    return { messages: result, readMessageIds: unreadMessageIds };
   }
 
   async findOne(messageId: Types.ObjectId): Promise<MessageDocument> {

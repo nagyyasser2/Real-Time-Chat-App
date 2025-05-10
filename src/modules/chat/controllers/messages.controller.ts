@@ -7,7 +7,7 @@ import {
   Param,
   Delete,
   Query,
-  Put
+  Put,
 } from '@nestjs/common';
 import { MessagesService } from '../services/messages.service';
 import { CreateMessageDto } from '../dtos/create-message.dto';
@@ -19,7 +19,7 @@ import { User } from 'src/modules/users/user.schema';
 
 @Controller('messages')
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) { }
+  constructor(private readonly messagesService: MessagesService) {}
 
   @Post()
   async create(@Body() createMessageDto: CreateMessageDto) {
@@ -27,17 +27,24 @@ export class MessagesController {
   }
 
   @Patch('read/:id')
-  async markMessageAsRead(@CurrentUser() user: User, @Param('id') messageId: Types.ObjectId){
-    return await this.messagesService.markMessageAsRead(messageId)
+  async markMessageAsRead(
+    @CurrentUser() user: User,
+    @Param('id') messageId: Types.ObjectId,
+  ) {
+    return await this.messagesService.markMessageAsRead(messageId);
   }
 
   @Get('conversation/:conversationId')
   async findAllForConversation(
+    @CurrentUser() user: User,
     @Param('conversationId') conversationId: string,
     @Query('skip') skip: string,
     @Query('limit') limit: string,
   ) {
+    var userId = new Types.ObjectId(user._id);
+
     return this.messagesService.findAllForConversation(
+      userId,
       new Types.ObjectId(conversationId),
       parseInt(skip, 10) || 0,
       parseInt(limit, 10) || 20,
@@ -54,7 +61,10 @@ export class MessagesController {
     @Param('id') id: string,
     @Body() updateMessageDto: UpdateMessageDto,
   ) {
-    return this.messagesService.update(new Types.ObjectId(id), updateMessageDto);
+    return this.messagesService.update(
+      new Types.ObjectId(id),
+      updateMessageDto,
+    );
   }
 
   @Patch(':id/status')
@@ -84,7 +94,9 @@ export class MessagesController {
   }
 
   @Get('conversation/:conversationId/count')
-  async countMessagesInConversation(@Param('conversationId') conversationId: string) {
+  async countMessagesInConversation(
+    @Param('conversationId') conversationId: string,
+  ) {
     return this.messagesService.countMessagesInConversation(
       new Types.ObjectId(conversationId),
     );

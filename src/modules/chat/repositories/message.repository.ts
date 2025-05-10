@@ -14,7 +14,11 @@ export class MessageRepository {
   ) {}
 
   async create(messageData: CreateMessageDto): Promise<MessageDocument> {
-    return this.messageModel.create(messageData);
+    return this.messageModel.create({
+      ...messageData,
+      senderId: new Types.ObjectId(messageData.senderId),
+      conversationId: new Types.ObjectId(messageData.conversationId),
+    });
   }
 
   async findByConversation(
@@ -22,12 +26,12 @@ export class MessageRepository {
     skip = 0,
     limit = 20,
   ): Promise<MessageDocument[]> {
-    return  await this.messageModel
+    return await this.messageModel
       .find({
-        conversationId: conversationId,
+        conversationId: new Types.ObjectId(conversationId),
         isDeleted: false,
       })
-      .sort({ timestamp: 1 })
+      .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)
       .exec();
@@ -149,7 +153,7 @@ export class MessageRepository {
           status: { $ne: MessageStatus.READ },
         },
         { $set: { status: MessageStatus.READ } },
-      ) 
+      )
       .exec();
     return { modifiedCount: result.modifiedCount };
   }

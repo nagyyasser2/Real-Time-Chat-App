@@ -28,7 +28,18 @@ export class AuthService {
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user._id.toString(), tokens.refresh_token);
 
-    return {tokens, user};
+    const filteredUser = {
+      _id: user._id,
+      phoneNumber: user.phoneNumber,
+      username: user.username,
+      country: user.country,
+      profilePic: user.profilePic,
+      status: user.status,
+      lastSeen: user.lastSeen,
+      privacySettings: user.privacySettings,
+    };
+
+    return { tokens, user: filteredUser };
   }
 
   async signIn(signInDto: SignInDto): Promise<any> {
@@ -41,11 +52,23 @@ export class AuthService {
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user._id.toString(), tokens.refresh_token);
 
-    return {tokens, user};
+    const filteredUser = {
+      _id: user._id,
+      phoneNumber: user.phoneNumber,
+      username: user.username,
+      country: user.country,
+      profilePic: user.profilePic,
+      status: user.status,
+      lastSeen: user.lastSeen,
+      privacySettings: user.privacySettings,
+    };
+
+    return { tokens, user: filteredUser };
   }
 
   async refreshTokens(userId: string, refreshToken: string): Promise<Tokens> {
-    const user:any = await this.usersService.findOne(userId);
+    const user: any = await this.usersService.findOne(userId);
+
     if (!user || !user.refreshToken)
       throw new UnauthorizedException('Access Denied');
 

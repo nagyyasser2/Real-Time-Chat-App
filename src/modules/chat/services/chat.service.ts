@@ -191,41 +191,50 @@ export class ChatService {
       if (!payload.receiverId) {
         throw new BadRequestException('Missing required sender or receiver ID');
       }
-  
+
       const receiverId = this.validateObjectId(payload.receiverId);
       let conversation: any = null;
-      
+
       // Try to find existing conversation
       if (payload.conversationId) {
         try {
           const conversationId = this.validateObjectId(payload.conversationId);
-          conversation = await this.conversationsService.findOneById(conversationId);
+          conversation =
+            await this.conversationsService.findOneById(conversationId);
         } catch (error) {
           this.logger.debug(`Invalid conversation ID: ${error.message}`);
         }
       }
-  
+
       // Create new conversation if needed
       if (!conversation) {
-        conversation = await this.createNewConversation(senderId, receiverId.toString());
+        conversation = await this.createNewConversation(
+          senderId,
+          receiverId.toString(),
+        );
         payload.conversationId = conversation._id.toString();
       }
-  
+
       // Validate user permissions and conversation state
       this.validateConversationAccess(conversation, senderId, receiverId);
-  
+
       // Create and send the message
       const message = await this.createMessage(senderId, payload);
-  
+
       // Update conversation and notify participants
-      await this.updateConversationAndNotify(conversation, message, senderId, receiverId);
-  
+      await this.updateConversationAndNotify(
+        conversation,
+        message,
+        senderId,
+        receiverId,
+      );
+
       return;
     } catch (error) {
       this.handleSendMessageError(error, client);
     }
   }
-  
+
   private validateObjectId(id: string): Types.ObjectId {
     try {
       return new Types.ObjectId(id);
@@ -233,24 +242,27 @@ export class ChatService {
       throw new BadRequestException(`Invalid ID format: ${id}`);
     }
   }
-  
+
   private async createNewConversation(
-    senderId: string, 
-    receiverId: string
+    senderId: string,
+    receiverId: string,
   ): Promise<any> {
-    const conversation = await this.conversationsService.create(senderId, receiverId);
-    
+    const conversation = await this.conversationsService.create(
+      senderId,
+      receiverId,
+    );
+
     // Notify both participants about the new conversation
-     this.server.to(receiverId).emit(ChatEvents.NEW_CONVERSATION, conversation);
-     this.server.to(senderId).emit(ChatEvents.NEW_CONVERSATION, conversation);
-    
+    this.server.to(receiverId).emit(ChatEvents.NEW_CONVERSATION, conversation);
+    this.server.to(senderId).emit(ChatEvents.NEW_CONVERSATION, conversation);
+
     return conversation;
   }
-  
+
   private validateConversationAccess(
-    conversation: any, 
-    senderId: string, 
-    receiverId: Types.ObjectId
+    conversation: any,
+    senderId: string,
+    receiverId: Types.ObjectId,
   ): void {
     // Check if user is a participant
     if (
@@ -259,7 +271,7 @@ export class ChatService {
     ) {
       throw new BadRequestException('Not a conversation participant');
     }
-  
+
     // Check if conversation is blocked
     if (
       conversation.blockedBy.some(
@@ -269,52 +281,62 @@ export class ChatService {
       throw new BadRequestException('Conversation is blocked');
     }
   }
-  
+
   private async createMessage(
-    senderId: string, 
-    payload: SendMessageDto
+    senderId: string,
+    payload: SendMessageDto,
   ): Promise<any> {
     const messagePayload: CreateMessageDto = {
       ...payload,
       senderId: new Types.ObjectId(senderId),
       conversationId: new Types.ObjectId(payload.conversationId),
     };
-  
+
     return this.messagesService.create(messagePayload);
   }
-  
+
   private async updateConversationAndNotify(
     conversation: any,
     message: any,
     senderId: string,
-    receiverId: Types.ObjectId
+    receiverId: Types.ObjectId,
   ): Promise<void> {
     // Update last message in conversation
-    await this.conversationsService.setLastMessage(conversation._id, message._id);
-    
+    await this.conversationsService.setLastMessage(
+      conversation._id,
+      message._id,
+    );
+
     // Always send message to sender
     this.server.to(senderId).emit(ChatEvents.RECEIVE_MESSAGE, message);
-    
+
     // Check if receiver is online and notify them
-    const receiverOnline = await this.redisStore.isUserOnline(receiverId.toString());
-    
+    const receiverOnline = await this.redisStore.isUserOnline(
+      receiverId.toString(),
+    );
+
     if (receiverOnline) {
-      this.server.to(receiverId.toString()).emit(ChatEvents.RECEIVE_MESSAGE, message);
-      
+      this.server
+        .to(receiverId.toString())
+        .emit(ChatEvents.RECEIVE_MESSAGE, message);
+
       // Mark as delivered and notify sender
       const updatedMsg = await this.messagesService.updateStatus(
         message._id,
         MessageStatus.DELIVERED,
       );
-      
+
       this.server.to(senderId).emit(ChatEvents.MESSAGE_DELIVERED, updatedMsg);
     } else {
       // Optional: Queue for push notification or other offline delivery mechanism
       await this.queueOfflineNotification(receiverId.toString(), message);
     }
   }
-  
-  private async queueOfflineNotification(receiverId: string, message: any): Promise<void> {
+
+  private async queueOfflineNotification(
+    receiverId: string,
+    message: any,
+  ): Promise<void> {
     try {
       // Implementation would depend on your notification system
       // E.g., this.notificationService.queuePushNotification(receiverId, {
@@ -323,26 +345,29 @@ export class ChatService {
       //   data: { conversationId: message.conversationId }
       // });
     } catch (error) {
-      this.logger.warn(`Failed to queue offline notification: ${error.message}`);
+      this.logger.warn(
+        `Failed to queue offline notification: ${error.message}`,
+      );
       // Don't throw - this is a non-critical failure
     }
   }
-  
+
   private handleSendMessageError(error: any, client: Socket): void {
     const errorCode = error.code || 'UNKNOWN_ERROR';
     const statusCode = error instanceof BadRequestException ? 400 : 500;
-    
+
     this.logger.error(
       `Message handling error [${errorCode}]: ${error.message}`,
       error.stack,
     );
-    
+
     client.emit(ChatEvents.ERROR, {
       code: errorCode,
       status: statusCode,
-      message: error instanceof BadRequestException 
-        ? error.message 
-        : 'Message send failed',
+      message:
+        error instanceof BadRequestException
+          ? error.message
+          : 'Message send failed',
     });
   }
 
@@ -471,13 +496,37 @@ export class ChatService {
     );
   }
 
-  async markMessagesAsRead(conversationId: string, userId: string){
-    return await this.messagesService.markMessagesAsRead(conversationId, userId)
+  async markMessagesAsRead(conversationId: string, userId: string) {
+    return await this.messagesService.markMessagesAsRead(
+      conversationId,
+      userId,
+    );
   }
 
   async markMessageAsRead(
     messageId: Types.ObjectId | string,
   ): Promise<MessageDocument | null> {
     return await this.messagesService.markMessageAsRead(messageId);
+  }
+
+  async loadMsgsAndMarkThem(
+    userId: any,
+    receiverId: any,
+    conversationId: Types.ObjectId,
+    skip = 0,
+    limit = 10,
+  ) {
+    const { readMessageIds, messages } =
+      await this.messagesService.findAllForConversation(
+        userId,
+        conversationId,
+        skip,
+        limit,
+      );
+
+    this.server
+      .to([userId.toString(), receiverId.toString()])
+      .emit(ChatEvents.MESSAGES_READ, { conversationId, readMessageIds });
+    return messages;
   }
 }

@@ -11,6 +11,8 @@ import {
   NotFoundException,
   BadRequestException,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -20,6 +22,9 @@ import { LastSeenVisibility } from './enums/lastSeenVisibility.enum';
 import { PhotoVisibility } from './enums/profile-photo.enum';
 import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @Controller('users')
 export class UsersController {
@@ -86,12 +91,13 @@ export class UsersController {
     await this.usersService.removeContact(user._id, id);
   }
 
-  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @Patch()
   async update(
-    @Param('id') id: string,
+    @CurrentUser() user,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
-    return this.usersService.update(id, updateUserDto);
+    return this.usersService.update(user._id, updateUserDto);
   }
 
   @Delete(':id')
@@ -99,15 +105,42 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  @Patch(':id/profile-pic')
+  @UseGuards(JwtAuthGuard)
+  @Put('profile-pic')
+  @UseInterceptors(
+    FileInterceptor('profilePic', {
+      storage: diskStorage({
+        destination: './uploads/profile-pics',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `${uniqueSuffix}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.originalname.match(/\.(jpg|JPG|jpeg|png|gif)$/)) {
+          return cb(
+            new BadRequestException('Only image files are allowed!'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
   async updateProfilePic(
-    @Param('id') id: string,
-    @Body('profilePicUrl') profilePicUrl: string,
+    @CurrentUser() user,
+    @UploadedFile() file: Express.Multer.File,
   ): Promise<User> {
-    if (!profilePicUrl) {
-      throw new BadRequestException('profilePicUrl is required');
+    if (!file) {
+      throw new BadRequestException('Profile picture is required');
     }
-    return this.usersService.updateProfilePic(id, profilePicUrl);
+    // Create URL for the saved file
+    const profilePicUrl = `${process.env.APP_URL}/uploads/profile-pics/${file.filename}`;
+
+    // Save the URL to database
+    return await this.usersService.updateProfilePic(user._id, profilePicUrl);
   }
 
   @Patch(':id/status')
@@ -124,7 +157,6 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Put('last-seen')
   async updateLastSeen(@CurrentUser() user): Promise<any> {
-    console.log(user)
     return this.usersService.updateLastSeen(user._id);
   }
 

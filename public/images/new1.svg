@@ -1,0 +1,32 @@
+<svg viewBox="0 0 1584 396" xmlns="http://www.w3.org/2000/svg" width="1584" height="396" preserveAspectRatio="xMidYMid slice">
+  <!-- Background -->
+  <rect width="1584" height="396" fill="#111" />
+  
+  <!-- Node.js logo - centered vertically and left-aligned -->
+  <g transform="translate(200, 198) scale(1.8)">
+    <path d="M50,0 C50,-28.7 32.7,-53.3 6,-65.3 L-14,-76.7 C-15.3,-77.3 -16.7,-78 -18,-78 C-19.3,-78 -20.7,-77.3 -22,-76.7 L-42,-65.3 C-68.7,-53.3 -86,-28.7 -86,0 C-86,28.7 -68.7,53.3 -42,65.3 L-22,76.7 C-20.7,77.3 -19.3,78 -18,78 C-16.7,78 -15.3,77.3 -14,76.7 L6,65.3 C32.7,53.3 50,28.7 50,0 Z" fill="#8CC84B" />
+    <path d="M-18,-78 L-18,78 C-16.7,78 -15.3,77.3 -14,76.7 L6,65.3 C32.7,53.3 50,28.7 50,0 C50,-28.7 32.7,-53.3 6,-65.3 L-14,-76.7 C-15.3,-77.3 -16.7,-78 -18,-78 Z" fill="#8CC84B" />
+    <path d="M-18,58 C-38,58 -54,40 -54,20 C-54,0 -38,-18 -18,-18 C2,-18 18,0 18,20 C18,40 2,58 -18,58 Z" fill="#111" />
+  </g>
+
+  <!-- Text section -->
+  <g transform="translate(600, 0)">
+    <text x="492" y="130" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="#ffffff" text-anchor="middle">Node.js Developer</text>
+    <text x="492" y="200" font-family="Arial, sans-serif" font-size="36" fill="#8CC84B" text-anchor="middle" font-weight="bold">
+      Docker • AWS • Database
+    </text>
+    <g font-family="Arial, sans-serif" font-size="28" fill="#ffffff" font-weight="500">
+      <text x="492" y="270" text-anchor="middle">Phone: +201094066795</text>
+      <text x="492" y="320" text-anchor="middle">Email: nagiyasserahmed@gmail.com</text>
+    </g>
+  </g>
+
+  <!-- Subtle code pattern -->
+  <g opacity="0.03" fill="#ffffff">
+    <text x="180" y="60" font-family="monospace" font-size="12">const express = require('express');</text>
+    <text x="180" y="80" font-family="monospace" font-size="12">const app = express();</text>
+    <text x="180" y="100" font-family="monospace" font-size="12">app.use(express.json());</text>
+    <text x="1100" y="320" font-family="monospace" font-size="12">const port = process.env.PORT || 3000;</text>
+    <text x="1100" y="340" font-family="monospace" font-size="12">app.listen(port);</text>
+  </g>
+</svg>

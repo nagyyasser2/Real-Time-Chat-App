@@ -15,13 +15,13 @@ import { CreateUserDto } from '../users/dto/create-user.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { JwtAuthGuard } from './guards/auth.guard'
+import { JwtAuthGuard } from './guards/auth.guard';
 import { Tokens } from './interfaces/auth.interface';
 import { User } from '../users/user.schema';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
@@ -35,12 +35,12 @@ export class AuthController {
     return this.authService.signIn(signInDto);
   }
 
-  @Post('refresh')
+  @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
-  async refreshTokens(@Body() refreshTokenDto: RefreshTokenDto): Promise<Tokens> {
-    return this.authService.refreshTokens(
-      refreshTokenDto.userId,
-      refreshTokenDto.refreshToken,
+  async refreshTokens(@Body() payload: RefreshTokenDto): Promise<Tokens> {
+    return await this.authService.refreshTokens(
+      payload.userId,
+      payload.refreshToken,
     );
   }
 

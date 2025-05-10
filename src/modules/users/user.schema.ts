@@ -22,11 +22,11 @@ export class User {
   @Prop({ type: String, required: true })
   password: string;
 
-  @Prop({ type: String , default:"http://sahab/assets/saldfjslakfjd" })
+  @Prop({ type: String, default: 'https://i.pravatar.cc/150?img=3' })
   profilePic: string;
 
-  @Prop({ type: String, default: null })
-  status?: string;
+  @Prop({ type: String, default: 'foucs' })
+  status: string;
 
   @Prop({ type: String, default: null })
   lastSeen?: Date;

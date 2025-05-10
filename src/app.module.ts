@@ -17,7 +17,8 @@ import { ChatModule } from './modules/chat/chat.module';
       isGlobal: true,
     }),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
+      rootPath: join(__dirname, '..', 'uploads'), // Adjust if your uploads folder is elsewhere
+      serveRoot: '/uploads', // URL prefix
     }),
     DatabaseModule,
     UsersModule,
@@ -27,4 +28,4 @@ import { ChatModule } from './modules/chat/chat.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

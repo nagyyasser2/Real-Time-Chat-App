@@ -22,6 +22,7 @@ export class UsersService {
     id: string,
     projection?: string | Record<string, 1 | 0>,
   ): Promise<Partial<User>> {
+    console.log(id);
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid user ID');
     }
@@ -142,6 +143,7 @@ export class UsersService {
       userId,
       profilePicUrl,
     );
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -172,7 +174,7 @@ export class UsersService {
     return user;
   }
 
-  async checkLastSeenAccess(requestingUserId: string, userId: string){
+  async checkLastSeenAccess(requestingUserId: string, userId: string) {
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid user ID');
     }
@@ -180,21 +182,24 @@ export class UsersService {
       throw new BadRequestException('Invalid requestingUserId ID');
     }
 
-   return await this.userRepository.checkLastSeenAccess(requestingUserId,userId);
+    return await this.userRepository.checkLastSeenAccess(
+      requestingUserId,
+      userId,
+    );
   }
-  
+
   async handleLastSeen(requestingUserId: string, userId: string) {
     try {
       // First update the lastSeen timestamp
       await this.updateLastSeen(userId);
-      
+
       // Then check if the requesting user has access to see it
       return await this.checkLastSeenAccess(requestingUserId, userId);
     } catch (error) {
       console.error('Error handling lastSeen:', error);
       return null;
     }
-}
+  }
 
   async updatePrivacySettings(
     userId: string,
@@ -373,7 +378,6 @@ export class UsersService {
         await this.userRepository.updateUser(contactUserId, {
           contacts: contactsToUpdate,
         });
-       
       } catch (error) {
         console.error('Error updating contact user:', error);
       }
