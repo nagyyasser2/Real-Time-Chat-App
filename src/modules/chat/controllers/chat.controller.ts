@@ -17,18 +17,57 @@ import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 import { User } from '../../users/user.schema';
 import { MessagesService } from '../services/messages.service';
 import { ChatService } from '../services/chat.service';
+import { UsersService } from 'src/modules/users/users.service';
 
-@Controller('chat')
+@Controller('chats')
 @UseGuards(AuthGuard('jwt'))
 export class ChatController {
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
     private readonly chatService: ChatService,
+    private readonly usersService: UsersService,
   ) {}
 
+  @Post()
+  async create(@CurrentUser() userInfo: any, @Body() payload: any) {
+    const newConversation = await this.chatService.createNewConversation(
+      userInfo._id,
+      payload.receiverId,
+    );
+
+    const receiver = await this.usersService.findOne(
+      payload.receiverId,
+      payload.projection,
+    );
+
+    const {
+      _id,
+      conversationKey,
+      isActive,
+      lastActivityAt,
+      blockedBy,
+      isArchived,
+      messageCount,
+      lastMessage,
+      unreadMessagesCount,
+    } = newConversation;
+
+    return {
+      _id,
+      conversationKey,
+      isActive,
+      lastActivityAt,
+      blockedBy,
+      isArchived,
+      messageCount,
+      lastMessage,
+      unreadMessagesCount,
+      otherParticipant: receiver,
+    };
+  }
   // Fetch user conversations.
-  @Get('conversations')
+  @Get()
   async getUserConversations(
     @CurrentUser() user: User,
     @Query('skip') skip: string,

@@ -275,10 +275,12 @@ export class ConversationRepository {
                 participant1Selected: {
                   _id: '$participant1._id',
                   username: '$participant1.username',
+                  profilePic: '$participant1.profilePic',
                 },
                 participant2Selected: {
                   _id: '$participant2._id',
                   username: '$participant2.username',
+                  profilePic: '$participant2.profilePic',
                 },
               },
               in: {
@@ -301,7 +303,7 @@ export class ConversationRepository {
           unreadMessages: 0,
           participant1: 0,
           participant2: 0,
-          __v: 0
+          __v: 0,
         },
       },
     ]);

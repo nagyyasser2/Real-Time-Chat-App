@@ -243,7 +243,7 @@ export class ChatService {
     }
   }
 
-  private async createNewConversation(
+  public async createNewConversation(
     senderId: string,
     receiverId: string,
   ): Promise<any> {

@@ -22,7 +22,6 @@ export class UsersService {
     id: string,
     projection?: string | Record<string, 1 | 0>,
   ): Promise<Partial<User>> {
-    console.log(id);
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid user ID');
     }
