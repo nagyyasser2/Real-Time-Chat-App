@@ -35,10 +35,30 @@ export class UsersService {
 
   async searchUsers(
     query: string,
-    field: 'username' | 'phoneNumber' | 'country', // Restrict the field to valid options
+    field: 'username' | 'phoneNumber' | 'country',
     projection?: Record<string, 1>,
-  ): Promise<Partial<User>[]> {
-    return this.userRepository.searchUsers(query, field, projection);
+    page = 1,
+    limit = 10,
+  ): Promise<{
+    data: Partial<User>[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const { data, total } = await this.userRepository.searchUsers(
+      query,
+      field,
+      projection,
+      page,
+      limit,
+    );
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+    };
   }
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {

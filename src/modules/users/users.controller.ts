@@ -43,9 +43,11 @@ export class UsersController {
   @Get('search')
   async searchUsers(
     @Query('q') q: string,
-    @Query('field') field: 'username' | 'phoneNumber' | 'country', // Restrict to valid fields
-    @Query('fields') fields?: string, // Optional projection fields
-  ): Promise<Partial<User>[]> {
+    @Query('field') field: 'username' | 'phoneNumber' | 'country',
+    @Query('fields') fields?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ): Promise<{ data: Partial<User>[]; total: number }> {
     if (!q) {
       throw new BadRequestException('Search query (q) is required');
     }
@@ -53,7 +55,6 @@ export class UsersController {
       throw new BadRequestException('Invalid field');
     }
 
-    // Create projection object for selecting specific fields (optional)
     const projection: Record<string, 1> | undefined = fields
       ? fields.split(',').reduce(
           (acc, field) => {
@@ -64,7 +65,7 @@ export class UsersController {
         )
       : undefined;
 
-    return this.usersService.searchUsers(q, field, projection);
+    return this.usersService.searchUsers(q, field, projection, +page, +limit);
   }
 
   @Get(':id')

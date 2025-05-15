@@ -120,14 +120,27 @@ export class UserRepository {
     query: string,
     field: 'username' | 'phoneNumber' | 'country',
     projection?: Record<string, 1>,
-  ): Promise<UserDocument[]> {
+    page = 1,
+    limit = 10,
+  ): Promise<{ data: UserDocument[]; total: number }> {
     const regex = new RegExp(query, 'i');
+    const skip = (page - 1) * limit;
 
-    return this.userModel
-      .find({
+    const [data, total] = await Promise.all([
+      this.userModel
+        .find({
+          [field]: { $regex: regex },
+        })
+        .select(projection || {})
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+
+      this.userModel.countDocuments({
         [field]: { $regex: regex },
-      })
-      .select(projection || {})
-      .exec();
+      }),
+    ]);
+
+    return { data, total };
   }
 }
