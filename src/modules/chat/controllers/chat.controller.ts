@@ -66,7 +66,7 @@ export class ChatController {
       otherParticipant: receiver,
     };
   }
-  // Fetch user conversations.
+
   @Get()
   async getUserConversations(
     @CurrentUser() user: User,
@@ -86,7 +86,6 @@ export class ChatController {
     );
   }
 
-  // Fetch conversation messages.
   @Get('conversationmessages/:conversationId')
   async getConversationsMessages(
     @CurrentUser() user: User,

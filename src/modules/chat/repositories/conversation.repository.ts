@@ -177,6 +177,9 @@ export class ConversationRepository {
   ) {
     const userObjectId = new Types.ObjectId(userId);
 
+    // First, get the total count of matching documents
+    const totalCount = await this.conversationModel.countDocuments(filter);
+
     const conversations = await this.conversationModel.aggregate([
       { $match: filter },
       { $sort: sort },
@@ -308,7 +311,11 @@ export class ConversationRepository {
       },
     ]);
 
-    return conversations;
+    // Return both conversations and total count
+    return {
+      chats: conversations,
+      total: totalCount,
+    };
   }
 
   async isParticipant(
