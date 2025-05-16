@@ -67,6 +67,12 @@ export class ChatController {
     };
   }
 
+  @Post('message')
+  async sendMsg(@CurrentUser() userInfo: any, @Body() body: any) {
+    const result = await this.chatService.sendMessage(userInfo._id, body);
+    return result;
+  }
+
   @Get()
   async getUserConversations(
     @CurrentUser() user: User,
@@ -86,19 +92,19 @@ export class ChatController {
     );
   }
 
-  @Get('conversationmessages/:conversationId')
+  @Get(':conversationId/messages/:receiverId')
   async getConversationsMessages(
     @CurrentUser() user: User,
     @Query('skip') skip: string,
     @Query('limit') limit: string,
     @Param('conversationId') conversationId: Types.ObjectId,
-    @Body() body: any,
+    @Param('receiverId') receiverId: string,
   ) {
     const skipNumber = parseInt(skip) || 0;
     const limitNumber = parseInt(limit) || 10;
 
     var userId = new Types.ObjectId(user._id);
-    var { receiverId } = body;
+
     return await this.chatService.loadMsgsAndMarkThem(
       userId,
       receiverId,

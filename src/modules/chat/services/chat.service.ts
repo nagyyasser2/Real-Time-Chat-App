@@ -181,11 +181,8 @@ export class ChatService {
     await this.redisStore.removeUser(userId);
   }
 
-  async sendMessage(
-    senderId: string,
-    payload: SendMessageDto,
-    client: Socket,
-  ): Promise<void> {
+  // here.........
+  async sendMessage(senderId: string, payload: SendMessageDto): Promise<void> {
     try {
       // Input validation
       if (!payload.receiverId) {
@@ -229,9 +226,9 @@ export class ChatService {
         receiverId,
       );
 
-      return;
+      return message;
     } catch (error) {
-      this.handleSendMessageError(error, client);
+      this.handleSendMessageError(error);
     }
   }
 
@@ -352,7 +349,7 @@ export class ChatService {
     }
   }
 
-  private handleSendMessageError(error: any, client: Socket): void {
+  private handleSendMessageError(error: any): void {
     const errorCode = error.code || 'UNKNOWN_ERROR';
     const statusCode = error instanceof BadRequestException ? 400 : 500;
 
@@ -361,14 +358,14 @@ export class ChatService {
       error.stack,
     );
 
-    client.emit(ChatEvents.ERROR, {
-      code: errorCode,
-      status: statusCode,
-      message:
-        error instanceof BadRequestException
-          ? error.message
-          : 'Message send failed',
-    });
+    // client.emit(ChatEvents.ERROR, {
+    //   code: errorCode,
+    //   status: statusCode,
+    //   message:
+    //     error instanceof BadRequestException
+    //       ? error.message
+    //       : 'Message send failed',
+    // });
   }
 
   async handleTypingStatus(

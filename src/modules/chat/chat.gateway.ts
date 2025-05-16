@@ -100,7 +100,7 @@ export class ChatGateway
       return;
     }
 
-    await this.chatService.sendMessage(senderId, payload, client);
+    // await this.chatService.sendMessage(senderId, payload, client);
   }
 
   @SubscribeMessage(ChatEvents.USER_TYPING)
@@ -176,13 +176,11 @@ export class ChatGateway
   ) {
     await this.chatService.markMessageAsRead(payload.messageId);
     client.emit(ChatEvents.MESSAGE_READ_SUCCESS);
-    
-    this.server
-      .to(payload.receiverId)
-      .emit(ChatEvents.MESSAGE_READ, {
-        messageId: payload.messageId,
-        conversationId: payload.conversationId,
-      });
+
+    this.server.to(payload.receiverId).emit(ChatEvents.MESSAGE_READ, {
+      messageId: payload.messageId,
+      conversationId: payload.conversationId,
+    });
   }
 
   @SubscribeMessage(ChatEvents.LAST_SEEN)
