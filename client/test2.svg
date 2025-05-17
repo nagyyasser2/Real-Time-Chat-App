@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 150" width="400" height="150">
+  <defs>
+    <!-- Gradient for geometric shapes -->
+    <linearGradient id="geoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A90E2" />
+      <stop offset="100%" stop-color="#6C5CE7" />
+    </linearGradient>
+    <!-- Pattern for texture -->
+    <pattern id="dots" width="10" height="10" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.5" fill="#fff" opacity="0.3" />
+    </pattern>
+  </defs>
+
+  <!-- Abstract cloud (hexagon-inspired) -->
+  <path d="M50,75 Q100,30 150,75 Q200,120 250,75 Q300,30 350,75 L350,100 Q300,150 250,100 Q200,150 150,100 Q100,150 50,100 Z" 
+        fill="url(#geoGradient)" opacity="0.9" />
+
+  <!-- Text integrated into the design -->
+  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" 
+        font-family="'Cairo', sans-serif" font-size="80" fill="#066ab4"
+        style="font-weight: 800; letter-spacing: -3px;">
+    <tspan>S</tspan>
+    <tspan dy="-10" style="font-size: 100px; fill: #FFD93D;">H</tspan> <!-- Highlighted "ح" -->
+    <tspan>aab</tspan>
+  </text>
+
+  <!-- Pattern overlay for texture -->
+  <rect width="400" height="150" fill="url(#dots)" opacity="0.2" />
+</svg>

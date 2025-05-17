@@ -16,9 +16,11 @@ import { ChatModule } from './modules/chat/chat.module';
       load: [configuration],
       isGlobal: true,
     }),
+
+    // Serve uploaded images
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'), // Adjust if your uploads folder is elsewhere
-      serveRoot: '/uploads', // URL prefix
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
     }),
     DatabaseModule,
     UsersModule,

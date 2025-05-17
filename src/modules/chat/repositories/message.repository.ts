@@ -31,7 +31,7 @@ export class MessageRepository {
         conversationId: new Types.ObjectId(conversationId),
         isDeleted: false,
       })
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: 1 })
       .skip(skip)
       .limit(limit)
       .exec();
