@@ -510,8 +510,8 @@ export class ChatService {
     userId: any,
     receiverId: any,
     conversationId: Types.ObjectId,
-    skip = 0,
-    limit = 10,
+    skip: number,
+    limit: number,
   ) {
     const { readMessageIds, messages } =
       await this.messagesService.findAllForConversation(

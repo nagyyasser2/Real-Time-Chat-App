@@ -23,15 +23,15 @@ export class MessageRepository {
 
   async findByConversation(
     conversationId: Types.ObjectId,
-    skip = 0,
-    limit = 20,
+    skip: number,
+    limit: number,
   ): Promise<MessageDocument[]> {
     return await this.messageModel
       .find({
         conversationId: new Types.ObjectId(conversationId),
         isDeleted: false,
       })
-      .sort({ timestamp: 1 })
+      .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)
       .exec();

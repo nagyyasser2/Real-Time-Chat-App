@@ -23,12 +23,11 @@ export class MessagesService {
     return message;
   }
 
-  // magic
   async findAllForConversation(
     userId: any,
     conversationId: Types.ObjectId,
-    skip = 0,
-    limit = 10,
+    skip: number,
+    limit: number,
   ): Promise<any> {
     const result = await this.messageRepository.findByConversation(
       conversationId,
