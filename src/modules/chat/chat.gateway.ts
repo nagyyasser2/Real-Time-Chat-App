@@ -103,10 +103,11 @@ export class ChatGateway
     // await this.chatService.sendMessage(senderId, payload, client);
   }
 
-  @SubscribeMessage(ChatEvents.USER_TYPING)
+  @SubscribeMessage(ChatEvents.TYPING)
   async handleStartTyping(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { conversationId: string; receiverId: string },
+    @MessageBody()
+    payload: { chatId: string; receiverId: string; isTyping: boolean },
   ): Promise<void> {
     const senderId = this.getUserIdFromSocket(client);
     if (!senderId) {
@@ -114,21 +115,12 @@ export class ChatGateway
       return;
     }
 
-    await this.chatService.handleTypingStatus(senderId, payload, true, client);
-  }
-
-  @SubscribeMessage(ChatEvents.USER_STOP_TYPING)
-  async handleStopTyping(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { conversationId: string; receiverId: string },
-  ): Promise<void> {
-    const senderId = this.getUserIdFromSocket(client);
-    if (!senderId) {
-      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
-      return;
-    }
-
-    await this.chatService.handleTypingStatus(senderId, payload, false, client);
+    await this.chatService.handleTypingStatus(
+      senderId,
+      payload,
+      payload.isTyping,
+      client,
+    );
   }
 
   @SubscribeMessage(ChatEvents.READ_CONVERSATION)

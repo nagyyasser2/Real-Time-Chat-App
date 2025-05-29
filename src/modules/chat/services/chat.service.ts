@@ -370,12 +370,12 @@ export class ChatService {
 
   async handleTypingStatus(
     senderId: string,
-    payload: { conversationId: string; receiverId: string },
+    payload: { chatId: string; receiverId: string },
     isTyping: boolean,
     client: Socket,
   ): Promise<void> {
     try {
-      const conversationId = new Types.ObjectId(payload.conversationId);
+      const conversationId = new Types.ObjectId(payload.chatId);
       const receiverId = new Types.ObjectId(payload.receiverId);
 
       // Verify conversation exists and user is a participant
@@ -401,16 +401,15 @@ export class ChatService {
       }
 
       // Emit typing event to the receiver
-      const receiverOnline = await this.redisStore.isUserOnline(
-        receiverId?.toString(),
-      );
-      if (receiverOnline) {
-        this.server.to(receiverId?.toString()).emit(ChatEvents.USER_TYPING, {
-          conversationId: payload.conversationId,
-          userId: senderId,
-          isTyping: isTyping,
-        });
-      }
+      // const receiverOnline = await this.redisStore.isUserOnline(
+      //   receiverId?.toString(),
+      // );
+      // if (receiverOnline) {
+      this.server.to(receiverId?.toString()).emit(ChatEvents.TYPING, {
+        chatId: payload.chatId,
+        isTyping,
+      });
+      // }
     } catch (error) {
       this.logger.error(`Typing status error: ${error.message}`, error.stack);
       client.emit(ChatEvents.ERROR, {
