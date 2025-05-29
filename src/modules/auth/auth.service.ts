@@ -140,7 +140,7 @@ export class AuthService {
     identifier: string,
     password: string,
   ): Promise<User> {
-    const user = await this.findUserByIdentifier(identifier);
+    const user = await this.usersService.findByUsername(identifier);
     if (!user) throw new UnauthorizedException('User not found');
 
     const passwordMatches = await bcrypt.compare(password, user.password);

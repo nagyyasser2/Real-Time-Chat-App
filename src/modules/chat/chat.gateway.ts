@@ -65,6 +65,7 @@ export class ChatGateway
 
         this.redisStore.addUser(userId, client.id);
         await this.chatService.handleUserConnect(userId, client);
+        await this.chatService.notifyContactsWithUserStatus(userId, true);
       } catch (err) {
         this.logger.error('Invalid authentication token', err);
         client.disconnect();
@@ -157,6 +158,29 @@ export class ChatGateway
         message: 'Failed to mark messages as read',
         conversationId: payload.conversationId,
       });
+    }
+  }
+
+  @SubscribeMessage(ChatEvents.USER_STATUS_CHECK)
+  async handleCheckUserStatus(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { userId: string },
+  ): Promise<any> {
+    const userId = this.getUserIdFromSocket(client);
+    if (!userId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const userOnline = await this.redisStore.isUserOnline(payload.userId);
+
+      client.emit(ChatEvents.USER_STATUS_UPDATE, {
+        userId: payload.userId,
+        status: userOnline,
+      });
+    } catch (error) {
+      this.logger.error(`Error marking messages as read: ${error.message}`);
     }
   }
 

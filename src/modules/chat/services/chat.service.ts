@@ -90,10 +90,7 @@ export class ChatService {
     });
   }
 
-  async notifyContactsWithUserStatus(
-    userId: string,
-    status: 'online' | 'offline',
-  ): Promise<void> {
+  async notifyContactsWithUserStatus(userId: string, status): Promise<void> {
     this.logger.debug('notifyingContactsWithUserStatus....');
     try {
       const user = await this.usersService.findOne(userId);
@@ -106,18 +103,13 @@ export class ChatService {
         ) || [];
 
       for (const contact of contacts) {
-        if (contact.user) {
+        if (contact._id) {
           this.server
             .to(contact.user?.toString())
-            .emit(
-              status === 'online'
-                ? ChatEvents.USER_ONLINE
-                : ChatEvents.USER_OFLINE,
-              {
-                userId,
-                status,
-              },
-            );
+            .emit(ChatEvents.USER_STATUS_UPDATE, {
+              userId,
+              status,
+            });
         }
       }
     } catch (error) {
@@ -177,11 +169,10 @@ export class ChatService {
   async handleUserDisconnect(userId: string): Promise<void> {
     this.logger.log(`User disconnected: ${userId}`);
     await this.usersService.updateLastSeen(userId),
-      await this.notifyContactsWithUserStatus(userId, 'offline');
+      await this.notifyContactsWithUserStatus(userId, false);
     await this.redisStore.removeUser(userId);
   }
 
-  // here.........
   async sendMessage(senderId: string, payload: SendMessageDto): Promise<void> {
     try {
       // Input validation
