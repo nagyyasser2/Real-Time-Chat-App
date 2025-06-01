@@ -18,10 +18,7 @@ export class ConversationsService {
     private readonly messagesService: MessagesService,
   ) {}
 
-  async create(
-    participant1Id: string,
-    participant2Id: string,
-  ): Promise<ConversationDocument> {
+  async create(participant1Id: string, participant2Id: string): Promise<any> {
     try {
       if (participant1Id === participant2Id) {
         throw new BadRequestException(
@@ -69,7 +66,31 @@ export class ConversationsService {
         ]),
       });
 
-      return newconversation;
+      const receiver = await this.usersService.findOne(participant2.toString());
+
+      const {
+        _id,
+        isActive,
+        lastActivityAt,
+        blockedBy,
+        isArchived,
+        messageCount,
+        lastMessage,
+        unreadMessagesCount,
+      } = newconversation;
+
+      return {
+        otherParticipant: receiver,
+        conversationKey,
+        _id,
+        isActive,
+        lastActivityAt,
+        blockedBy,
+        isArchived,
+        messageCount,
+        lastMessage,
+        unreadMessagesCount,
+      };
     } catch (error) {
       if (error.code === 11000) {
         throw new ConflictException(

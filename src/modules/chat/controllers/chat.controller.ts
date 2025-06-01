@@ -69,8 +69,7 @@ export class ChatController {
 
   @Post('message')
   async sendMsg(@CurrentUser() userInfo: any, @Body() body: any) {
-    const result = await this.chatService.sendMessage(userInfo._id, body);
-    return result;
+    return await this.chatService.sendMessage(userInfo._id, body);
   }
 
   @Get()

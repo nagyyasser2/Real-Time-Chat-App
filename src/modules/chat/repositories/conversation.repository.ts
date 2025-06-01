@@ -21,9 +21,7 @@ export class ConversationRepository {
     private readonly conversationModel: Model<ConversationDocument>,
   ) {}
 
-  async create(
-    conversation: Partial<Conversation>,
-  ): Promise<ConversationDocument> {
+  async create(conversation: Partial<Conversation>): Promise<any> {
     return this.conversationModel.create(conversation);
   }
 

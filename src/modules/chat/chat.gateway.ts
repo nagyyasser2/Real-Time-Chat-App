@@ -90,20 +90,6 @@ export class ChatGateway
     return client.data?.userId || null;
   }
 
-  @SubscribeMessage(ChatEvents.SEND_MESSAGE)
-  async handleMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: SendMessageDto,
-  ): Promise<void> {
-    const senderId = this.getUserIdFromSocket(client);
-    if (!senderId) {
-      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
-      return;
-    }
-
-    // await this.chatService.sendMessage(senderId, payload, client);
-  }
-
   @SubscribeMessage(ChatEvents.TYPING)
   async handleStartTyping(
     @ConnectedSocket() client: Socket,
