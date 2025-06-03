@@ -277,11 +277,15 @@ export class ConversationRepository {
                   _id: '$participant1._id',
                   username: '$participant1.username',
                   profilePic: '$participant1.profilePic',
+                  phoneNumber: '$participant1.phoneNumber',
+                  country: '$participant1.country',
                 },
                 participant2Selected: {
                   _id: '$participant2._id',
                   username: '$participant2.username',
                   profilePic: '$participant2.profilePic',
+                  phoneNumber: '$participant1.phoneNumber',
+                  country: '$participant1.country',
                 },
               },
               in: {
@@ -340,5 +344,52 @@ export class ConversationRepository {
       })
       .exec();
     return count > 0;
+  }
+
+  // Block user in conversation
+  async blockUser(
+    conversationId: Types.ObjectId,
+    blockedByUserId: Types.ObjectId,
+  ): Promise<ConversationDocument | null> {
+    return this.conversationModel
+      .findByIdAndUpdate(
+        conversationId,
+        {
+          $addToSet: { blockedBy: blockedByUserId },
+          $set: { lastActivityAt: new Date(), isBlocked: true },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  // Unblock user in conversation
+  async unblockUser(
+    conversationId: Types.ObjectId,
+    unblockedByUserId: Types.ObjectId,
+  ): Promise<ConversationDocument | null> {
+    return this.conversationModel
+      .findByIdAndUpdate(
+        conversationId,
+        {
+          $pull: { blockedBy: unblockedByUserId },
+          $set: { lastActivityAt: new Date(), isBlocked: false },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  // Check if user is blocked in conversation
+  async isUserBlocked(
+    conversationId: Types.ObjectId,
+    userId: Types.ObjectId,
+  ): Promise<boolean> {
+    const conversation = await this.conversationModel
+      .findById(conversationId)
+      .exec();
+    if (!conversation) return false;
+
+    return conversation.blockedBy.some((blockedId) => blockedId.equals(userId));
   }
 }

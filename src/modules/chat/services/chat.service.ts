@@ -232,10 +232,25 @@ export class ChatService {
 
     conversation.unreadMessagesCount = 0;
 
-    // Notify both participants about the new conversation
+    const sender = await this.usersService.findOne(senderId.toString());
+    const receiver = await this.usersService.findOne(receiverId.toString());
+
+    const senderNewConversatoinBody = {
+      ...conversation,
+      otherParticipant: receiver,
+    };
+    const receiverNewConversatoinBody = {
+      ...conversation,
+      otherParticipant: sender,
+    };
+
     this.server
-      .to([receiverId.toString(), senderId.toString()])
-      .emit(ChatEvents.NEW_CONVERSATION, conversation);
+      .to(receiverId.toString())
+      .emit(ChatEvents.NEW_CONVERSATION, receiverNewConversatoinBody);
+
+    this.server
+      .to(senderId.toString())
+      .emit(ChatEvents.NEW_CONVERSATION, senderNewConversatoinBody);
 
     return conversation;
   }

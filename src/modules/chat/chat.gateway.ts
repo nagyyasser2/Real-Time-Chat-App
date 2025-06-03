@@ -14,8 +14,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RedisStoreService } from './services/redis-store.service';
 import { ChatEvents } from './chat.events';
-import { SendMessageDto } from './dtos/send-message.dto';
 import { ChatService } from './services/chat.service';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 
 @WebSocketGateway({
   cors: {
@@ -208,5 +208,37 @@ export class ChatGateway
         message: 'Failed to retrieve last seen status',
       });
     }
+  }
+
+  @SubscribeMessage(ChatEvents.UPDATE_BLOCK_STATUS)
+  async handleUpdateBlockStatus(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: any,
+    @CurrentUser() user: any,
+  ) {
+    const senderId = this.getUserIdFromSocket(client);
+    if (!senderId) {
+      client.emit(ChatEvents.ERROR, { message: 'Unauthorized' });
+      return;
+    }
+    const { conversationId, receiverId, blockStatus } = payload;
+
+    const canSendMessages = blockStatus.canSendMessages;
+
+    const updatedBlockedStatusForReceiver = {
+      isBlockedByMe: canSendMessages ? false : !blockStatus.isBlockedByMe,
+      isBlockedByOther: canSendMessages ? false : !blockStatus.isBlockedByOther,
+      canSendMessages: canSendMessages,
+    };
+
+    this.server.to(receiverId.toString()).emit(ChatEvents.UPDATE_BLOCK_STATUS, {
+      conversationId,
+      blockStatus: updatedBlockedStatusForReceiver,
+    });
+
+    // this.server.to(senderId.toString()).emit(ChatEvents.UPDATE_BLOCK_STATUS, {
+    //   conversationId,
+    //   blockStatus,
+    // });
   }
 }

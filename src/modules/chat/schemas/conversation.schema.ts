@@ -11,11 +11,14 @@ export class Conversation {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   participant2: Types.ObjectId;
 
-  @Prop({ type: String,  required: true })
+  @Prop({ type: String, required: true })
   conversationKey: string;
 
   @Prop({ type: Boolean, default: true })
   isActive: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  isBlocked: boolean;
 
   @Prop({ type: Date })
   lastActivityAt: Date;
@@ -40,7 +43,10 @@ export const ConversationSchema = SchemaFactory.createForClass(Conversation);
 
 // Middleware to generate a unique conversationKey before saving
 ConversationSchema.pre('validate', function (next) {
-  const ids = [this.participant1.toString(), this.participant2.toString()].sort();
+  const ids = [
+    this.participant1.toString(),
+    this.participant2.toString(),
+  ].sort();
   this.conversationKey = `${ids[0]}_${ids[1]}`;
   next();
 });

@@ -26,4 +26,5 @@ export enum ChatEvents {
   TYPING = 'typing',
   USER_STATUS_CHECK = 'user_status_check',
   USER_STATUS_UPDATE = 'user_status_update',
+  UPDATE_BLOCK_STATUS = 'update_block_status',
 }

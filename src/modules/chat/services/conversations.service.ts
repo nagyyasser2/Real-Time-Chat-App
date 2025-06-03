@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { ConversationDocument } from '../schemas/conversation.schema';
@@ -18,17 +19,11 @@ export class ConversationsService {
     private readonly messagesService: MessagesService,
   ) {}
 
-  async create(participant1Id: string, participant2Id: string): Promise<any> {
+  async create(senderId: string, receiverId: string): Promise<any> {
     try {
-      if (participant1Id === participant2Id) {
-        throw new BadRequestException(
-          'Cannot create a conversation with yourself',
-        );
-      }
-
       // Convert participant IDs to ObjectId
-      const objectId1 = new Types.ObjectId(participant1Id);
-      const objectId2 = new Types.ObjectId(participant2Id);
+      const objectId1 = new Types.ObjectId(senderId);
+      const objectId2 = new Types.ObjectId(receiverId);
 
       // Ensure a consistent order for storage
       const [sortedParticipant1, sortedParticipant2] = [
@@ -49,7 +44,7 @@ export class ConversationsService {
         return existingConversation;
       }
 
-      await this.usersService.addContact(participant1Id, participant2Id);
+      await this.usersService.addContact(senderId, receiverId);
 
       // Create and save the conversation
       const newconversation = await this.conversationRepository.create({
@@ -61,12 +56,10 @@ export class ConversationsService {
         messageCount: 0,
         blockedBy: [],
         lastReadAt: new Map<string, Date>([
-          [participant1Id, new Date()],
-          [participant2Id, new Date()],
+          [senderId, new Date()],
+          [receiverId, new Date()],
         ]),
       });
-
-      const receiver = await this.usersService.findOne(participant2.toString());
 
       const {
         _id,
@@ -80,9 +73,8 @@ export class ConversationsService {
       } = newconversation;
 
       return {
-        otherParticipant: receiver,
-        conversationKey,
         _id,
+        conversationKey,
         isActive,
         lastActivityAt,
         blockedBy,
@@ -320,5 +312,178 @@ export class ConversationsService {
       conversation.participant1 === userId ||
       conversation.participant2 === userId
     );
+  }
+
+  /**
+   * Block a user in a conversation
+   */
+  async blockUser(
+    conversationId: Types.ObjectId,
+    blockedByUserId: Types.ObjectId,
+    targetUserId: Types.ObjectId,
+  ): Promise<ConversationDocument> {
+    // Validate that the conversation exists
+    const conversation =
+      await this.conversationRepository.findById(conversationId);
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    // Validate that the user blocking is a participant in the conversation
+    const isParticipant =
+      conversation.participant1.equals(blockedByUserId) ||
+      conversation.participant2.equals(blockedByUserId);
+
+    if (!isParticipant) {
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
+    }
+
+    // Validate that the target user is the other participant
+    const isTargetParticipant =
+      conversation.participant1.equals(targetUserId) ||
+      conversation.participant2.equals(targetUserId);
+
+    if (!isTargetParticipant) {
+      throw new BadRequestException(
+        'Target user is not a participant in this conversation',
+      );
+    }
+
+    // Cannot block yourself
+    if (blockedByUserId.equals(targetUserId)) {
+      throw new BadRequestException('You cannot block yourself');
+    }
+
+    // Check if user is already blocked
+    const isAlreadyBlocked = await this.conversationRepository.isUserBlocked(
+      conversationId,
+      blockedByUserId,
+    );
+
+    if (isAlreadyBlocked) {
+      throw new ConflictException(
+        'User is already blocked in this conversation',
+      );
+    }
+
+    // Perform the block operation
+    const updatedConversation = await this.conversationRepository.blockUser(
+      conversationId,
+      blockedByUserId,
+    );
+
+    if (!updatedConversation) {
+      throw new NotFoundException('Failed to block user');
+    }
+
+    return updatedConversation;
+  }
+
+  /**
+   * Unblock a user in a conversation
+   */
+  async unblockUser(
+    conversationId: Types.ObjectId,
+    unblockedByUserId: Types.ObjectId,
+    targetUserId: Types.ObjectId,
+  ): Promise<ConversationDocument> {
+    // Validate that the conversation exists
+    const conversation =
+      await this.conversationRepository.findById(conversationId);
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    // Validate that the user unblocking is a participant in the conversation
+    const isParticipant =
+      conversation.participant1.equals(unblockedByUserId) ||
+      conversation.participant2.equals(unblockedByUserId);
+
+    if (!isParticipant) {
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
+    }
+
+    // Validate that the target user is the other participant
+    const isTargetParticipant =
+      conversation.participant1.equals(targetUserId) ||
+      conversation.participant2.equals(targetUserId);
+
+    if (!isTargetParticipant) {
+      throw new BadRequestException(
+        'Target user is not a participant in this conversation',
+      );
+    }
+
+    // Check if user is actually blocked by the current user
+    const isBlocked = await this.conversationRepository.isUserBlocked(
+      conversationId,
+      unblockedByUserId,
+    );
+
+    if (!isBlocked) {
+      throw new ConflictException('User is not blocked in this conversation');
+    }
+
+    // Perform the unblock operation
+    const updatedConversation = await this.conversationRepository.unblockUser(
+      conversationId,
+      unblockedByUserId,
+    );
+
+    if (!updatedConversation) {
+      throw new NotFoundException('Failed to unblock user');
+    }
+
+    return updatedConversation;
+  }
+
+  /**
+   * Check if a user is blocked in a conversation
+   */
+  async isUserBlocked(
+    conversationId: Types.ObjectId,
+    userId: Types.ObjectId,
+  ): Promise<boolean> {
+    return this.conversationRepository.isUserBlocked(conversationId, userId);
+  }
+
+  /**
+   * Get block status for a conversation from current user's perspective
+   */
+  async getBlockStatus(
+    conversationId: Types.ObjectId,
+    currentUserId: Types.ObjectId,
+  ): Promise<{
+    isBlockedByMe: boolean;
+    isBlockedByOther: boolean;
+    canSendMessages: boolean;
+  }> {
+    const conversation =
+      await this.conversationRepository.findById(conversationId);
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    // Get the other participant
+    const otherParticipant = conversation.participant1.equals(currentUserId)
+      ? conversation.participant2
+      : conversation.participant1;
+
+    const isBlockedByMe = conversation.blockedBy.some((id) =>
+      id.equals(currentUserId),
+    );
+    const isBlockedByOther = conversation.blockedBy.some((id) =>
+      id.equals(otherParticipant),
+    );
+
+    return {
+      isBlockedByMe,
+      isBlockedByOther,
+      canSendMessages: !isBlockedByMe && !isBlockedByOther,
+    };
   }
 }
