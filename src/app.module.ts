@@ -16,11 +16,22 @@ import { ChatModule } from './modules/chat/chat.module';
       load: [configuration],
       isGlobal: true,
     }),
-
-    // Serve uploaded images
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
+      // Add these options to fix CORS issues
+      serveStaticOptions: {
+        setHeaders: (res, path) => {
+          res.set({
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers':
+              'Origin, X-Requested-With, Content-Type, Accept',
+            'Cross-Origin-Resource-Policy': 'cross-origin',
+            'Cross-Origin-Embedder-Policy': 'unsafe-none',
+          });
+        },
+      },
     }),
     DatabaseModule,
     UsersModule,

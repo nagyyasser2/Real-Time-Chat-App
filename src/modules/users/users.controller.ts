@@ -138,7 +138,7 @@ export class UsersController {
       throw new BadRequestException('Profile picture is required');
     }
     // Create URL for the saved file
-    const profilePicUrl = `${process.env.APP_URL}/uploads/profile-pics/${file.filename}`;
+    const profilePicUrl = `http://10.10.4.26:3000/uploads/profile-pics/${file.filename}`;
 
     // Save the URL to database
     return await this.usersService.updateProfilePic(user._id, profilePicUrl);

@@ -21,14 +21,14 @@ export class UsersService {
   async findOne(
     id: string,
     projection?: string | Record<string, 1 | 0>,
-  ): Promise<Partial<User>> {
+  ): Promise<any> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid user ID');
     }
 
     const user = await this.userRepository.findUserById(id, projection);
     if (!user) {
-      throw new NotFoundException('User not found');
+      return null;
     }
     return user;
   }
